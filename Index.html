@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8" />
+  <title>Matrimonial - Social Prototype with MEGA Storage</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- CryptoJS for password hashing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <!-- MegaJS for file uploads -->
+  <script src="https://unpkg.com/megajs@1.1.2/dist/main.browser-es.min.js" type="module"></script>
+  <style>
+    :root{--primary:#ff4d6d;--muted:#777}
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f4f6f8;color:#222}
+    header{background:var(--primary);color:#fff;padding:10px 12px;display:flex;align-items:center;justify-content:space-between}
+    header h1{margin:0;font-size:18px}
+    header .right{display:flex;gap:8px;align-items:center}
+    nav{background:#fff;padding:6px;display:flex;gap:6px;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.06);display:none}
+    nav button{background:var(--primary);color:#fff;border:0;padding:8px;border-radius:50%;font-size:16px;cursor:pointer;width:40px;height:40px;position:relative}
+    nav button:hover::after{content:attr(data-tooltip);position:absolute;top:-30px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;white-space:nowrap}
+    .container{padding:12px;max-width:980px;margin:14px auto}
+    section{display:none}
+    .card{background:#fff;padding:12px;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.04);margin-bottom:12px}
+    input,textarea,select{width:100%;padding:8px;margin:6px 0;border:1px solid #ddd;border-radius:6px;box-sizing:border-box}
+    .row{display:flex;gap:10px}
+    .col{flex:1}
+    img.profile-thumb{width:80px;height:80px;border-radius:50%;object-fit:cover}
+    .small{font-size:13px;color:var(--muted)}
+    .gallery img{width:80px;height:80px;object-fit:cover;border-radius:8px;margin:4px;loading:lazy}
+    .post-actions{display:flex;gap:8px;align-items:center;margin-top:8px}
+    .react-btn{background:#fafafa;border:1px solid #eee;padding:6px;border-radius:6px;cursor:pointer}
+    .comment{background:#fbfbfb;padding:8px;border-radius:8px;margin-top:6px}
+    .reply{margin-left:12px;background:#fff;padding:8px;border-radius:8px;border-left:3px solid #eee}
+    .friends-list{display:flex;flex-wrap:wrap;gap:8px}
+    .friend-pill{background:#fff;padding:6px 8px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex;align-items:center;gap:8px}
+    .btn-outline{background:#fff;color:var(--primary);border:1px solid var(--primary)}
+    .hidden{display:none}
+    .muted{color:var(--muted)}
+    .center{text-align:center}
+    .error-message{color:#d32f2f;font-size:13px;margin:4px 0;padding:6px;border-radius:4px;background:#ffebee;display:none}
+    .success-message{color:#2e7d32;font-size:13px;margin:4px 0;padding:6px;border-radius:4px;background:#e8f5e9;display:none}
+    .password-toggle{cursor:pointer;color:var(--primary);font-size:12px;margin-top:2px}
+    #loading{background:#fff;padding:10px;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,.04);text-align:center;display:none}
+    .post-card{background:#fff;padding:16px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);margin:12px 0;width:100%;max-width:100%;box-sizing:border-box}
+    .post-card img{max-width:100%;height:auto;border-radius:8px}
+    footer{padding:12px;text-align:center;color:var(--muted);font-size:13px}
+    @media(max-width:600px){
+      header h1{font-size:16px}
+      nav{overflow:auto;padding:8px}
+      .row{flex-direction:column}
+      .card{padding:10px}
+      .profile-thumb{width:60px;height:60px}
+      nav button{width:36px;height:36px;font-size:14px}
+      .post-card{padding:12px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Matrimonial — Community</h1>
+    <div class="right">
+      <select id="languageSelector" onchange="setLanguage(this.value)" aria-label="Select Language">
+        <option value="bn">বাংলা</option>
+        <option value="en">English</option>
+        <option value="hi">हिन्दी</option>
+        <option value="ur">اردو</option>
+        <option value="ar">العربية</option>
+        <option value="fr">Français</option>
+      </select>
+    </div>
+  </header>
+
+  <nav id="mainNav">
+    <button id="navProfile" onclick="showSection('profilePanel')" data-tooltip="প্রোফাইল" aria-label="Profile">👤</button>
+    <button id="navBrowse" onclick="showSection('browsePanel')" data-tooltip="ব্যবহারকারী" aria-label="Users">👥</button>
+    <button id="navRequests" onclick="showSection('requestsPanel')" data-tooltip="রিকোয়েস্ট" aria-label="Requests">🤝</button>
+    <button id="navFeed" onclick="showSection('feedPanel')" data-tooltip="নিউজফিড" aria-label="Feed">📰</button>
+    <button id="navChat" onclick="showSection('chatPanel')" data-tooltip="চ্যাট" aria-label="Chat">💬</button>
+    <button id="navNotifications" onclick="showSection('notificationsPanel')" data-tooltip="নোটিফিকেশন" aria-label="Notifications">🔔</button>
+    <button id="navLogout" onclick="logout()" data-tooltip="লগআউট" aria-label="Logout">🚪</button>
+  </nav>
+
+  <div class="container">
+    <!-- Loading Indicator -->
+    <div id="loading">Loading...</div>
+
+    <!-- AUTH: LOGIN -->
+    <section id="loginPanel" class="card" style="display:block">
+      <h2 id="loginTitle">লগইন করুন</h2>
+      <div id="loginMessage" class="success-message"></div>
+      <div id="loginError" class="error-message"></div>
+      <input id="loginEmail" type="email" placeholder="ইমেইল (example@domain.com)" required aria-label="Email">
+      <div style="position:relative">
+        <input id="loginPass" type="password" placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" required aria-label="Password">
+        <span class="password-toggle" onclick="togglePassword('loginPass', this)">দেখান</span>
+      </div>
+      <div class="row">
+        <button onclick="doLogin()" style="flex:1" aria-label="Login to your account">লগইন</button>
+        <button onclick="showSection('signupPanel')" class="btn-outline" style="flex:1" aria-label="Go to signup">সাইনআপ</button>
+      </div>
+      <p class="small center"><a href="#" onclick="showSection('forgotPanel')">পাসওয়ার্ড ভুলে গেছেন?</a></p>
+    </section>
+
+    <!-- SIGNUP -->
+    <section id="signupPanel" class="card">
+      <h2 id="signupTitle">সাইনআপ</h2>
+      <div id="signupError" class="error-message"></div>
+      <input id="regName" placeholder="পুরো নাম" required aria-label="Full Name">
+      <input id="regEmail" type="email" placeholder="ইমেইল (example@domain.com)" required aria-label="Email">
+      <div style="position:relative">
+        <input id="regPass" type="password" placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" required aria-label="Password">
+        <span class="password-toggle" onclick="togglePassword('regPass', this)">দেখান</span>
+      </div>
+      <div class="row">
+        <button onclick="doSignup()" style="flex:1" aria-label="Register account">নিবন্ধন</button>
+        <button onclick="showSection('loginPanel')" class="btn-outline" style="flex:1" aria-label="Back to login">ফিরে যান</button>
+      </div>
+    </section>
+
+    <!-- FORGOT -->
+    <section id="forgotPanel" class="card">
+      <h2 id="forgotTitle">পাসওয়ার্ড রিসেট</h2>
+      <div id="forgotError" class="error-message"></div>
+      <input id="forgotEmail" type="email" placeholder="ইমেইল লিখুন" required aria-label="Email">
+      <div style="position:relative">
+        <input id="forgotNewPass" type="password" placeholder="নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" required aria-label="New Password">
+        <span class="password-toggle" onclick="togglePassword('forgotNewPass', this)">দেখান</span>
+      </div>
+      <div class="row">
+        <button onclick="resetPassword()" style="flex:1" aria-label="Reset password">রিসেট</button>
+        <button onclick="showSection('loginPanel')" class="btn-outline" style="flex:1" aria-label="Back to login">ফিরে যান</button>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="profilePanel" class="card">
+      <div style="display:flex;gap:12px;align-items:center">
+        <img id="mePic" class="profile-thumb" src="" alt="Profile picture">
+        <div>
+          <h3 id="meName"></h3>
+          <div class="small" id="meEmail"></div>
+          <div class="small" id="meLocation"></div>
+          <div class="small" id="meAge"></div>
+          <div class="small" id="meGender"></div>
+          <div class="small" id="meOccupation"></div>
+          <div class="small" id="meFriendsCount"></div>
+        </div>
+        <div style="margin-left:auto">
+          <button onclick="toggleEditMe()" id="btnEditMe" class="btn-outline" aria-label="Edit profile">Edit</button>
+        </div>
+      </div>
+      <div id="profileError" class="error-message"></div>
+      <div id="meEdit" class="hidden" style="margin-top:10px">
+        <input id="meNameInput" placeholder="Name" aria-label="Name">
+        <input id="meLocationInput" placeholder="Location" aria-label="Location">
+        <input id="meAgeInput" type="number" placeholder="Age" aria-label="Age">
+        <select id="meGenderInput" aria-label="Gender">
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+        </select>
+        <input id="meOccupationInput" placeholder="Occupation" aria-label="Occupation">
+        <input id="mePicInput" type="file" accept="image/*" onchange="updateMyPic(this)" aria-label="Profile picture">
+        <div class="row">
+          <button onclick="saveMe()" aria-label="Save profile">Save</button>
+          <button onclick="toggleEditMe()" class="btn-outline" aria-label="Cancel edit">Cancel</button>
+        </div>
+      </div>
+      <hr>
+      <h4>Gallery</h4>
+      <div id="galleryError" class="error-message"></div>
+      <input id="meAddPics" type="file" accept="image/*" multiple onchange="addMyGallery(this)" aria-label="Add gallery images">
+      <div class="gallery" id="meGallery"></div>
+      <hr>
+      <h4>Friends</h4>
+      <div id="myFriends" class="friends-list"></div>
+    </section>
+
+    <!-- BROWSE USERS -->
+    <section id="browsePanel" class="card">
+      <h3>Users</h3>
+      <div class="row">
+        <input id="searchName" placeholder="Search by name" aria-label="Search by name">
+        <select id="filterGender" aria-label="Filter by gender">
+          <option value="">All Genders</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+        </select>
+        <button onclick="filterUsers()" aria-label="Search users">Search</button>
+      </div>
+      <div id="usersList" class="friends-list"></div>
+      <hr>
+      <div id="viewProfile" class="hidden card"></div>
+    </section>
+
+    <!-- FRIEND REQUESTS -->
+    <section id="requestsPanel" class="card">
+      <h3>Friend Requests</h3>
+      <div id="incomingRequests"></div>
+      <hr>
+      <h4>Sent Requests</h4>
+      <div id="sentRequests"></div>
+    </section>
+
+    <!-- NOTIFICATIONS -->
+    <section id="notificationsPanel" class="card">
+      <h3>Notifications</h3>
+      <div id="notificationsList"></div>
+    </section>
+
+    <!-- FEED -->
+    <section id="feedPanel" class="card">
+      <h3>Newsfeed</h3>
+      <div class="card">
+        <textarea id="newPostText" placeholder="What's on your mind?" aria-label="Write a post"></textarea>
+        <div id="postError" class="error-message"></div>
+        <input id="newPostImages" type="file" accept="image/*" multiple onchange="previewPostImages(this)" aria-label="Add post images">
+        <div id="postPreview" class="gallery"></div>
+        <div class="row">
+          <button onclick="createPost()" aria-label="Create post">Post</button>
+          <button onclick="clearPost()" class="btn-outline" aria-label="Clear post">Clear</button>
+        </div>
+      </div>
+      <div id="feedArea"></div>
+    </section>
+
+    <!-- CHAT -->
+    <section id="chatPanel" class="card">
+      <h3>Chat</h3>
+      <div id="chatContacts" class="friends-list"></div>
+      <hr>
+      <div id="chatWindow" class="card hidden">
+        <div id="chatWith" class="small muted"></div>
+        <div id="chatMessages" style="min-height:150px;max-height:300px;overflow:auto"></div>
+        <div class="row">
+          <input id="chatMsg" placeholder="Type a message..." aria-label="Type a message">
+          <button onclick="sendChat()" aria-label="Send message">Send</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>Prototype — all data stored securely</footer>
+
+<script type="module">
+/* ---------------------------
+  MEGA Storage Integration
+---------------------------*/
+import { Storage } from 'https://unpkg.com/megajs@1.1.2/dist/main.browser-es.min.js';
+
+let megaStorage = null;
+let store = {
+  users: [],
+  posts: [],
+  chats: {},
+  notifications: {}
+};
+
+// MEGA credentials (encoded for basic obfuscation, not secure for production)
+const megaCredentials = {
+  email: atob('U291cmF2NjI5MDE1QGdtYWlsLmNvbQ=='), // Base64 encoded email
+  password: atob('U291cmF2QDEyMzQ=') // Base64 encoded password
+};
+
+async function connectMega() {
+  console.log('connectMega called');
+  showLoading();
+  try {
+    megaStorage = new Storage({
+      email: megaCredentials.email,
+      password: megaCredentials.password
+    });
+
+    await new Promise((resolve, reject) => {
+      megaStorage.on('ready', () => {
+        console.log('MEGA connected');
+        resolve();
+      });
+      megaStorage.on('error', (err) => {
+        console.error('MEGA connection error:', err);
+        reject(err);
+      });
+    });
+
+    // Load existing data from MEGA
+    await loadDataFromMega();
+    hideLoading();
+  } catch (err) {
+    console.error('MEGA login error:', err);
+    alert('Failed to initialize storage. Please try again later.');
+    hideLoading();
+  }
+}
+
+async function saveDataToMega() {
+  try {
+    const dataStr = JSON.stringify(store);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const fileName = 'data.json';
+    const existingFile = megaStorage.root.children.find(f => f.name === fileName);
+    if (existingFile) await existingFile.delete();
+    const uploadedFile = await megaStorage.upload(fileName, blob).complete;
+    console.log('Data saved to MEGA:', fileName);
+  } catch (err) {
+    console.error('Error saving data to MEGA:', err);
+    throw err;
+  }
+}
+
+async function loadDataFromMega() {
+  try {
+    const file = megaStorage.root.children.find(f => f.name === 'data.json');
+    if (file) {
+      const data = await file.downloadBuffer();
+      store = JSON.parse(data.toString());
+      console.log('Data loaded from MEGA:', store);
+    } else {
+      // Initialize default data if no file exists
+      store = {
+        users: [
+          { id: 'u1', name: 'Sourav Dey', email: 'sourav@example.com', pass: CryptoJS.SHA256('1234').toString(), location: 'Dhaka', age: 30, gender: 'male', occupation: 'Engineer', pic: '', gallery: [], friends: ['u2'], friendRequests: [], sentRequests: [] },
+          { id: 'u2', name: 'Rahim', email: 'rahim@example.com', pass: CryptoJS.SHA256('1234').toString(), location: 'Chittagong', age: 28, gender: 'male', occupation: 'Teacher', pic: '', gallery: [], friends: ['u1'], friendRequests: [], sentRequests: [] },
+          { id: 'u3', name: 'Karim', email: 'karim@example.com', pass: CryptoJS.SHA256('1234').toString(), location: 'Sylhet', age: 25, gender: 'male', occupation: 'Student', pic: '', gallery: [], friends: [], friendRequests: [], sentRequests: [] }
+        ],
+        posts: [
+          { id: 'p1', userId: 'u2', text: 'Hello, joining here!', images: [], reactions: {}, comments: [] }
+        ],
+        chats: {},
+        notifications: {}
+      };
+      await saveDataToMega();
+    }
+  } catch (err) {
+    console.error('Error loading data from MEGA:', err);
+    throw err;
+  }
+}
+
+/* ---------------------------
+  Data model
+---------------------------*/
+function uid(prefix='id') { return prefix + Math.random().toString(36).slice(2, 9); }
+
+/* ---------------------------
+  Helpers
+---------------------------*/
+function showLoading() { document.getElementById('loading').style.display = 'block'; }
+function hideLoading() { document.getElementById('loading').style.display = 'none'; }
+function sanitizeInput(str) { return String(str).replace(/[<>]/g, ''); }
+function hashPassword(password) { return CryptoJS.SHA256(password).toString(); }
+function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+function escapeHtml(str = '') { return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s]); }
+
+/* ---------------------------
+  Auth & UI helpers
+---------------------------*/
+let currentUser = null;
+
+function showSection(id) {
+  ['loginPanel', 'signupPanel', 'forgotPanel', 'profilePanel', 'browsePanel', 'requestsPanel', 'feedPanel', 'chatPanel', 'notificationsPanel'].forEach(s => {
+    document.getElementById(s).style.display = 'none';
+  });
+  ['loginError', 'signupError', 'forgotError', 'profileError', 'galleryError', 'postError'].forEach(e => {
+    document.getElementById(e).style.display = 'none';
+    document.getElementById(e).textContent = '';
+  });
+  document.getElementById(id).style.display = 'block';
+  if (id !== 'browsePanel') document.getElementById('viewProfile').classList.add('hidden');
+  try {
+    if (id === 'loginPanel') document.getElementById('loginEmail').focus();
+    else if (id === 'signupPanel') document.getElementById('regName').focus();
+    else if (id === 'forgotPanel') document.getElementById('forgotEmail').focus();
+  } catch (e) {
+    console.error('Focus error:', e);
+  }
+}
+
+function showError(elementId, message) {
+  const errorEl = document.getElementById(elementId);
+  errorEl.textContent = message;
+  errorEl.style.display = 'block';
+}
+
+function showSuccess(elementId, message) {
+  const successEl = document.getElementById(elementId);
+  successEl.textContent = message;
+  successEl.style.display = 'block';
+}
+
+function togglePassword(inputId, toggleEl) {
+  const input = document.getElementById(inputId);
+  if (input.type === 'password') {
+    input.type = 'text';
+    toggleEl.textContent = translations[currentLang].hide;
+  } else {
+    input.type = 'password';
+    toggleEl.textContent = translations[currentLang].show;
+  }
+}
+
+async function doSignup() {
+  console.log('doSignup called');
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  showLoading();
+  try {
+    const name = sanitizeInput(document.getElementById('regName').value.trim());
+    const email = document.getElementById('regEmail').value.trim();
+    const pass = document.getElementById('regPass').value.trim();
+
+    if (!name || !email || !pass) {
+      showError('signupError', translations[currentLang].fillAllFields);
+      hideLoading();
+      return;
+    }
+    if (!validateEmail(email)) {
+      showError('signupError', translations[currentLang].invalidEmail);
+      hideLoading();
+      return;
+    }
+    if (pass.length < 6) {
+      showError('signupError', translations[currentLang].passwordTooShort);
+      hideLoading();
+      return;
+    }
+    if (store.users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+      showError('signupError', translations[currentLang].emailExists);
+      hideLoading();
+      return;
+    }
+
+    const newU = {
+      id: uid('u'),
+      name,
+      email,
+      pass: hashPassword(pass),
+      location: '',
+      age: '',
+      gender: '',
+      occupation: '',
+      pic: '',
+      gallery: [],
+      friends: [],
+      friendRequests: [],
+      sentRequests: []
+    };
+    store.users.push(newU);
+    await saveDataToMega();
+
+    document.getElementById('regName').value = '';
+    document.getElementById('regEmail').value = '';
+    document.getElementById('regPass').value = '';
+    document.querySelector('#regPass + .password-toggle').textContent = translations[currentLang].show;
+
+    showSection('loginPanel');
+    showSuccess('loginMessage', translations[currentLang].signupSuccess);
+    hideLoading();
+  } catch (err) {
+    console.error('Signup error:', err);
+    showError('signupError', 'An error occurred during signup. Please try again.');
+    hideLoading();
+  }
+}
+
+async function doLogin() {
+  console.log('doLogin called');
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  showLoading();
+  try {
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass = document.getElementById('loginPass').value.trim();
+
+    if (!email || !pass) {
+      showError('loginError', translations[currentLang].fillAllFields);
+      hideLoading();
+      return;
+    }
+    if (!validateEmail(email)) {
+      showError('loginError', translations[currentLang].invalidEmail);
+      hideLoading();
+      return;
+    }
+
+    const hashedPass = hashPassword(pass);
+    const user = store.users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.pass === hashedPass);
+    if (!user) {
+      showError('loginError', translations[currentLang].invalidCredentials);
+      hideLoading();
+      return;
+    }
+
+    currentUser = user;
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginPass').value = '';
+    document.querySelector('#loginPass + .password-toggle').textContent = translations[currentLang].show;
+    onLogin();
+    hideLoading();
+  } catch (err) {
+    console.error('Login error:', err);
+    showError('loginError', 'An error occurred during login. Please try again.');
+    hideLoading();
+  }
+}
+
+async function resetPassword() {
+  console.log('resetPassword called');
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  showLoading();
+  try {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const newPass = document.getElementById('forgotNewPass').value.trim();
+
+    if (!email || !newPass) {
+      showError('forgotError', translations[currentLang].fillAllFields);
+      hideLoading();
+      return;
+    }
+    if (!validateEmail(email)) {
+      showError('forgotError', translations[currentLang].invalidEmail);
+      hideLoading();
+      return;
+    }
+    if (newPass.length < 6) {
+      showError('forgotError', translations[currentLang].passwordTooShort);
+      hideLoading();
+      return;
+    }
+
+    const user = store.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) {
+      showError('forgotError', translations[currentLang].emailNotFound);
+      hideLoading();
+      return;
+    }
+
+    user.pass = hashPassword(newPass);
+    await saveDataToMega();
+
+    document.getElementById('forgotEmail').value = '';
+    document.getElementById('forgotNewPass').value = '';
+    document.querySelector('#forgotNewPass + .password-toggle').textContent = translations[currentLang].show;
+
+    showSection('loginPanel');
+    showSuccess('loginMessage', translations[currentLang].passwordResetSuccess);
+    hideLoading();
+  } catch (err) {
+    console.error('Reset password error:', err);
+    showError('forgotError', 'An error occurred during password reset. Please try again.');
+    hideLoading();
+  }
+}
+
+function onLogin() {
+  document.getElementById('mainNav').style.display = 'flex';
+  renderMyProfile();
+  renderUsersList();
+  renderRequests();
+  renderFeed();
+  renderChatContacts();
+  renderNotifications();
+  showSection('profilePanel');
+}
+
+/* ---------------------------
+  Profile Image Upload
+---------------------------*/
+async function updateMyPic(inp) {
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  const file = inp.files[0];
+  if (!file) return;
+  showLoading();
+  try {
+    const blob = await compressImage(file);
+    const fileName = `${currentUser.id}_profile_${Date.now()}.jpg`;
+    const uploadedFile = await megaStorage.upload(fileName, blob).complete;
+    const link = await uploadedFile.link();
+    currentUser.pic = link;
+    await saveDataToMega();
+    renderMyProfile();
+    showSuccess('profileError', translations[currentLang].profilePicUploaded);
+    hideLoading();
+  } catch (err) {
+    console.error('Profile pic upload error:', err);
+    showError('profileError', translations[currentLang].uploadFailed);
+    hideLoading();
+  }
+}
+
+function compressImage(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 200;
+        canvas.height = 200;
+        canvas.getContext('2d').drawImage(img, 0, 0, 200, 200);
+        canvas.toBlob(resolve, 'image/jpeg', 0.7);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ---------------------------
+  Gallery Image Upload
+---------------------------*/
+async function addMyGallery(inp) {
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  const files = Array.from(inp.files || []);
+  if (files.length === 0) return;
+  showLoading();
+  currentUser.gallery = currentUser.gallery || [];
+  try {
+    for (const file of files) {
+      const blob = await compressImage(file);
+      const fileName = `${currentUser.id}_gallery_${Date.now()}_${Math.random().toString(36).slice(2, 9)}.jpg`;
+      const uploadedFile = await megaStorage.upload(fileName, blob).complete;
+      const link = await uploadedFile.link();
+      currentUser.gallery.push(link);
+    }
+    await saveDataToMega();
+    renderMyProfile();
+    showSuccess('galleryError', translations[currentLang].galleryUploaded);
+    hideLoading();
+  } catch (err) {
+    console.error('Gallery upload error:', err);
+    showError('galleryError', translations[currentLang].uploadFailed);
+    hideLoading();
+  }
+}
+
+/* ---------------------------
+  Post Image Upload
+---------------------------*/
+async function createPost() {
+  if (!currentUser) return alert(translations[currentLang].loginFirst);
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  const text = sanitizeInput(document.getElementById('newPostText').value.trim());
+  const files = document.getElementById('newPostImages').files;
+  const images = [];
+
+  showLoading();
+  try {
+    for (const file of files) {
+      const blob = await compressImage(file);
+      const fileName = `${currentUser.id}_post_${Date.now()}_${Math.random().toString(36).slice(2, 9)}.jpg`;
+      const uploadedFile = await megaStorage.upload(fileName, blob).complete;
+      const link = await uploadedFile.link();
+      images.push(link);
+    }
+    const post = { id: uid('p'), userId: currentUser.id, text, images, reactions: {}, comments: [] };
+    store.posts.unshift(post);
+    await saveDataToMega();
+    renderFeed();
+    clearPost();
+    showSuccess('postError', translations[currentLang].postCreated);
+    hideLoading();
+  } catch (err) {
+    console.error('Post creation error:', err);
+    showError('postError', translations[currentLang].uploadFailed);
+    hideLoading();
+  }
+}
+
+/* ---------------------------
+  Profile
+---------------------------*/
+function renderMyProfile() {
+  if (!currentUser) return;
+  document.getElementById('meName').textContent = currentUser.name;
+  document.getElementById('meEmail').textContent = currentUser.email;
+  document.getElementById('meLocation').textContent = currentUser.location || translations[currentLang].notSet;
+  document.getElementById('meAge').textContent = currentUser.age ? `${currentUser.age} years` : translations[currentLang].notSet;
+  document.getElementById('meGender').textContent = currentUser.gender || translations[currentLang].notSet;
+  document.getElementById('meOccupation').textContent = currentUser.occupation || translations[currentLang].notSet;
+  document.getElementById('meFriendsCount').textContent = `${translations[currentLang].friends}: ${currentUser.friends.length}`;
+  document.getElementById('mePic').src = currentUser.pic || 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#bbb" font-size="14">No Image</text></svg>`);
+  document.getElementById('meGallery').innerHTML = '';
+  currentUser.gallery.forEach(src => {
+    const img = document.createElement('img'); img.src = src; img.alt = "Gallery image";
+    document.getElementById('meGallery').appendChild(img);
+  });
+  const fdiv = document.getElementById('myFriends'); fdiv.innerHTML = '';
+  currentUser.friends.forEach(fid => {
+    const u = store.users.find(x => x.id === fid);
+    if (u) {
+      const el = document.createElement('div'); el.className = 'friend-pill';
+      el.innerHTML = `<img src="${u.pic||''}" style="width:36px;height:36px;border-radius:6px;object-fit:cover" alt="${u.name}'s picture"/><div><strong style="font-size:13px">${u.name}</strong><div class="small">${u.location||''}</div></div>`;
+      el.onclick = () => openProfile(u.id);
+      fdiv.appendChild(el);
+    }
+  });
+}
+
+async function toggleEditMe() {
+  document.getElementById('meEdit').classList.toggle('hidden');
+  if (!document.getElementById('meEdit').classList.contains('hidden')) {
+    document.getElementById('meNameInput').value = currentUser.name;
+    document.getElementById('meLocationInput').value = currentUser.location;
+    document.getElementById('meAgeInput').value = currentUser.age;
+    document.getElementById('meGenderInput').value = currentUser.gender;
+    document.getElementById('meOccupationInput').value = currentUser.occupation;
+  }
+}
+
+async function saveMe() {
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  showLoading();
+  try {
+    currentUser.name = sanitizeInput(document.getElementById('meNameInput').value || currentUser.name);
+    currentUser.location = sanitizeInput(document.getElementById('meLocationInput').value || currentUser.location);
+    currentUser.age = document.getElementById('meAgeInput').value || currentUser.age;
+    currentUser.gender = document.getElementById('meGenderInput').value || currentUser.gender;
+    currentUser.occupation = sanitizeInput(document.getElementById('meOccupationInput').value || currentUser.occupation);
+    await saveDataToMega();
+    renderMyProfile();
+    toggleEditMe();
+    alert(translations[currentLang].saved);
+    hideLoading();
+  } catch (err) {
+    console.error('Save profile error:', err);
+    showError('profileError', 'An error occurred while saving profile.');
+    hideLoading();
+  }
+}
+
+/* ---------------------------
+  Browse users & profiles
+---------------------------*/
+function renderUsersList() {
+  const list = document.getElementById('usersList'); list.innerHTML = '';
+  store.users.filter(u => u.id !== currentUser.id).forEach(u => {
+    const el = document.createElement('div'); el.className = 'friend-pill';
+    el.innerHTML = `<img src="${u.pic||''}" style="width:48px;height:48px;border-radius:8px;object-fit:cover" alt="${u.name}'s picture"/><div style="min-width:140px"><strong>${u.name}</strong><div class="small">${u.location||''}</div><div class="small">${u.age ? u.age+' years' : ''} ${u.gender||''}</div></div>`;
+    const btns = document.createElement('div'); btns.style.marginLeft = 'auto';
+    const isFriend = currentUser.friends.includes(u.id);
+    const sent = currentUser.sentRequests.includes(u.id);
+    if (isFriend) {
+      const b = document.createElement('button'); b.className = 'btn-outline'; b.textContent = translations[currentLang].friends; b.onclick = () => openProfile(u.id); btns.appendChild(b);
+    } else if (sent) {
+      const b = document.createElement('button'); b.className = 'btn-outline'; b.textContent = translations[currentLang].cancelRequest; b.onclick = () => cancelRequest(u.id); btns.appendChild(b);
+    } else {
+      const b = document.createElement('button'); b.textContent = translations[currentLang].sendRequest; b.onclick = () => sendFriendRequest(u.id); btns.appendChild(b);
+    }
+    el.appendChild(btns);
+    list.appendChild(el);
+  });
+}
+
+function filterUsers() {
+  const name = document.getElementById('searchName').value.toLowerCase();
+  const gender = document.getElementById('filterGender').value;
+  const list = document.getElementById('usersList'); list.innerHTML = '';
+  store.users
+    .filter(u => u.id !== currentUser.id && (!name || u.name.toLowerCase().includes(name)) && (!gender || u.gender === gender))
+    .forEach(u => {
+      const el = document.createElement('div'); el.className = 'friend-pill';
+      el.innerHTML = `<img src="${u.pic||''}" style="width:48px;height:48px;border-radius:8px;object-fit:cover" alt="${u.name}'s picture"/><div style="min-width:140px"><strong>${u.name}</strong><div class="small">${u.location||''}</div><div class="small">${u.age ? u.age+' years' : ''} ${u.gender||''}</div></div>`;
+      const btns = document.createElement('div'); btns.style.marginLeft = 'auto';
+      const isFriend = currentUser.friends.includes(u.id);
+      const sent = currentUser.sentRequests.includes(u.id);
+      if (isFriend) {
+        const b = document.createElement('button'); b.className = 'btn-outline'; b.textContent = translations[currentLang].friends; b.onclick = () => openProfile(u.id); btns.appendChild(b);
+      } else if (sent) {
+        const b = document.createElement('button'); b.className = 'btn-outline'; b.textContent = translations[currentLang].cancelRequest; b.onclick = () => cancelRequest(u.id); btns.appendChild(b);
+      } else {
+        const b = document.createElement('button'); b.textContent = translations[currentLang].sendRequest; b.onclick = () => sendFriendRequest(u.id); btns.appendChild(b);
+      }
+      el.appendChild(btns);
+      list.appendChild(el);
+    });
+}
+
+function openProfile(uid) {
+  const u = store.users.find(x => x.id === uid);
+  const container = document.getElementById('viewProfile');
+  container.classList.remove('hidden');
+  container.innerHTML = '';
+  const html = document.createElement('div');
+  html.innerHTML = `
+    <div style="display:flex;gap:10px;align-items:center">
+      <img src="${u.pic||''}" class="profile-thumb" alt="${u.name}'s profile picture" />
+      <div><h3>${u.name}</h3><div class="small">${u.email}</div><div class="small">${u.location||translations[currentLang].notSet}</div><div class="small">${u.age ? u.age+' years' : translations[currentLang].notSet} ${u.gender||''}</div><div class="small">${u.occupation||translations[currentLang].notSet}</div><div class="small">${translations[currentLang].friends}: ${u.friends.length}</div></div>
+    </div>
+    <div style="margin-top:8px">
+      <button id="profileFriendBtn" aria-label="Friend action"></button>
+      <button onclick="viewGallery('${u.id}')" class="btn-outline" aria-label="View gallery">${translations[currentLang].viewGallery}</button>
+    </div>
+    <hr>
+    <h4>${translations[currentLang].friends}</h4>
+    <div id="profileFriendList" class="friends-list"></div>
+  `;
+  container.appendChild(html);
+  const btn = document.getElementById('profileFriendBtn');
+  if (u.id === currentUser.id) {
+    btn.textContent = translations[currentLang].thisIsYou; btn.disabled = true;
+  } else if (currentUser.friends.includes(u.id)) {
+    btn.textContent = translations[currentLang].unfriend; btn.onclick = () => unfriend(u.id);
+  } else if (currentUser.sentRequests.includes(u.id)) {
+    btn.textContent = translations[currentLang].cancelRequest; btn.onclick = () => cancelRequest(u.id);
+  } else if (currentUser.friendRequests.includes(u.id)) {
+    btn.textContent = translations[currentLang].acceptRequest; btn.onclick = () => acceptFriend(u.id);
+  } else {
+    btn.textContent = translations[currentLang].sendRequest; btn.onclick = () => sendFriendRequest(u.id);
+  }
+  const fl = document.getElementById('profileFriendList'); fl.innerHTML = '';
+  u.friends.forEach(fid => {
+    const fu = store.users.find(x => x.id === fid);
+    if (fu) {
+      const fEl = document.createElement('div'); fEl.className = 'friend-pill'; fEl.innerHTML = `<img src="${fu.pic||''}" style="width:36px;height:36px;border-radius:6px" alt="${fu.name}'s picture"/><div><strong>${fu.name}</strong></div>`; fl.appendChild(fEl);
+    }
+  });
+  container.scrollIntoView({behavior: 'smooth'});
+}
+
+async function sendFriendRequest(targetId) {
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  showLoading();
+  try {
+    const target = store.users.find(u => u.id === targetId);
+    if (!target) return;
+    if (!target.friendRequests.includes(currentUser.id)) target.friendRequests.push(currentUser.id);
+    if (!currentUser.sentRequests.includes(targetId)) currentUser.sentRequests.push(targetId);
+    addNotification(targetId, `${currentUser.name} ${translations[currentLang].friendRequestText}`);
+    await saveDataToMega();
+    renderUsersList(); renderRequests(); renderNotifications();
+    alert(translations[currentLang].requestSent);
+    hideLoading();
+  } catch (err) {
+    console.error('Send friend request error:', err);
+    hideLoading();
+  }
+}
+
+async function cancelRequest(targetId) {
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  const target = store.users.find(u => u.id === targetId);
+  if (!target) return;
+  target.friendRequests = target.friendRequests.filter(x => x !== currentUser.id);
+  currentUser.sentRequests = currentUser.sentRequests.filter(x => x !== targetId);
+  await saveDataToMega();
+  renderUsersList(); renderRequests(); renderNotifications();
+  alert(translations[currentLang].requestCancelled);
+}
+
+async function acceptFriend(fromId) {
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  if (!currentUser.friendRequests.includes(fromId)) return;
+  if (!currentUser.friends.includes(fromId)) currentUser.friends.push(fromId);
+  const from = store.users.find(u => u.id === fromId);
+  if (from && !from.friends.includes(currentUser.id)) from.friends.push(currentUser.id);
+  currentUser.friendRequests = currentUser.friendRequests.filter(x => x !== fromId);
+  if (from) from.sentRequests = from.sentRequests.filter(x => x !== currentUser.id);
+  addNotification(fromId, `${currentUser.name} ${translations[currentLang].friendAdded}`);
+  await saveDataToMega();
+  renderMyProfile(); renderUsersList(); renderRequests(); renderChatContacts(); renderNotifications();
+  alert(translations[currentLang].friendAdded);
+}
+
+async function declineFriend(fromId) {
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  currentUser.friendRequests = currentUser.friendRequests.filter(x => x !== fromId);
+  const from = store.users.find(u => u.id === fromId);
+  if (from) from.sentRequests = from.sentRequests.filter(x => x !== currentUser.id);
+  await saveDataToMega();
+  renderRequests(); renderNotifications();
+  alert(translations[currentLang].requestDeclined);
+}
+
+async function unfriend(uid) {
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  currentUser.friends = currentUser.friends.filter(x => x !== uid);
+  const other = store.users.find(u => u.id === uid);
+  if (other) other.friends = other.friends.filter(x => x !== currentUser.id);
+  await saveDataToMega();
+  renderMyProfile(); renderUsersList(); renderChatContacts(); renderNotifications();
+  alert(translations[currentLang].unfriended);
+}
+
+function viewGallery(uid) {
+  const u = store.users.find(x => x.id === uid);
+  if (!u) return;
+  let html = `<h4>${u.name} - ${translations[currentLang].gallery}</h4><div class="gallery">`;
+  u.gallery.forEach(g => html += `<img src="${g}" alt="Gallery image">`);
+  html += '</div>';
+  const cont = document.getElementById('viewProfile'); cont.classList.remove('hidden'); cont.innerHTML = html;
+}
+
+/* ---------------------------
+  Notifications
+---------------------------*/
+async function addNotification(userId, message) {
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  if (!store.notifications[userId]) store.notifications[userId] = [];
+  store.notifications[userId].push({ id: uid('n'), message, time: Date.now() });
+  await saveDataToMega();
+}
+
+function renderNotifications() {
+  const list = document.getElementById('notificationsList'); list.innerHTML = '';
+  const notifs = store.notifications[currentUser.id] || [];
+  notifs.forEach(n => {
+    const el = document.createElement('div'); el.className = 'card';
+    el.innerHTML = `<div>${n.message}</div><div class="small muted">${new Date(n.time).toLocaleString()}</div>`;
+    list.appendChild(el);
+  });
+}
+
+/* ---------------------------
+  Requests panel
+---------------------------*/
+function renderRequests() {
+  const incoming = document.getElementById('incomingRequests');
+  incoming.innerHTML = '';
+  currentUser.friendRequests.forEach(fromId => {
+    const from = store.users.find(u => u.id === fromId);
+    if (from) {
+      const el = document.createElement('div'); el.className = 'card';
+      el.innerHTML = `<strong>${from.name}</strong> ${translations[currentLang].friendRequestText} <div style="margin-top:6px"><button onclick="acceptFriend('${from.id}')">${translations[currentLang].accept}</button> <button class="btn-outline" onclick="declineFriend('${from.id}')">${translations[currentLang].decline}</button></div>`;
+      incoming.appendChild(el);
+    }
+  });
+  const sent = document.getElementById('sentRequests'); sent.innerHTML = '';
+  currentUser.sentRequests.forEach(toId => {
+    const to = store.users.find(u => u.id === toId);
+    if (to) {
+      const el = document.createElement('div'); el.className = 'card';
+      el.innerHTML = `<strong>${translations[currentLang].to} ${to.name}</strong> <div><button onclick="cancelRequest('${to.id}')" class="btn-outline">${translations[currentLang].cancel}</button></div>`;
+      sent.appendChild(el);
+    }
+  });
+}
+
+/* ---------------------------
+  Feed
+---------------------------*/
+const REACTS = {
+  love: '❤️',
+  haha: '😆',
+  sad: '😢',
+  rain: '🌧',
+  hungry: '🍔',
+  danger: '⚠️'
+};
+
+function previewPostImages(inp) {
+  const files = Array.from(inp.files || []);
+  const preview = document.getElementById('postPreview');
+  preview.innerHTML = '';
+  files.forEach(f => compressImage(f).then(blob => {
+    const img = document.createElement('img'); img.src = URL.createObjectURL(blob); img.alt = "Post preview";
+    preview.appendChild(img);
+  }));
+}
+
+function clearPost() {
+  document.getElementById('newPostText').value = '';
+  document.getElementById('newPostImages').value = '';
+  document.getElementById('postPreview').innerHTML = '';
+}
+
+function renderFeed() {
+  const area = document.getElementById('feedArea'); area.innerHTML = '';
+  store.posts.forEach(p => {
+    const user = store.users.find(u => u.id === p.userId) || {};
+    const card = document.createElement('div'); card.className = 'post-card';
+    let html = `<div style="display:flex;gap:8px;align-items:center"><img src="${user.pic||''}" style="width:44px;height:44px;border-radius:8px;object-fit:cover" alt="${user.name}'s picture"/><div><strong>${user.name||'Unknown'}</strong><div class="small">${user.location||''}</div></div></div>`;
+    html += `<p style="margin-top:8px">${escapeHtml(p.text||'')}</p>`;
+    if (p.images && p.images.length) {
+      html += `<div class="gallery">${p.images.map(i => `<img src="${i}" alt="Post image">`).join('')}</div>`;
+    }
+    const counts = summarizeReacts(p.reactions);
+    html += `<div class="small muted">${translations[currentLang].reactions}: ${counts.map(c => c.count ? `${REACTS[c.type]} ${c.count}` : '').filter(Boolean).join(' ') || '0'}</div>`;
+    html += `<div class="post-actions">`;
+    html += `<div style="display:flex;gap:6px">`;
+    Object.keys(REACTS).forEach(rt => {
+      html += `<button class="react-btn" onclick="toggleReact('${p.id}','${rt}')" aria-label="React ${rt}">${REACTS[rt]}</button>`;
+    });
+    html += `</div>`;
+    html += `<div style="margin-left:auto"><button class="btn-outline" onclick="focusCommentBox('${p.id}')" aria-label="Comment on post">${translations[currentLang].comment}</button></div>`;
+    html += `</div>`;
+    html += `<div id="comments-${p.id}" style="margin-top:8px">`;
+    p.comments.forEach(c => {
+      html += `<div class="comment"><strong>${(store.users.find(u => u.id === c.userId) || {name: 'User'}).name}</strong> <div>${escapeHtml(c.text)}</div>`;
+      c.replies.forEach(r => {
+        html += `<div class="reply"><strong>${(store.users.find(u => u.id === r.userId) || {name: 'User'}).name}</strong> <div>${escapeHtml(r.text)}</div></div>`;
+      });
+      html += `<div style="margin-top:6px"><input id="replyInput-${p.id}-${c.id}" placeholder="${translations[currentLang].reply}" aria-label="Reply to comment"><button onclick="replyToComment('${p.id}','${c.id}')" aria-label="Submit reply">${translations[currentLang].reply}</button></div>`;
+      html += `</div>`;
+    });
+    html += `<div style="margin-top:8px"><input id="commentInput-${p.id}" placeholder="${translations[currentLang].writeComment}" aria-label="Write a comment"><button onclick="addComment('${p.id}')" aria-label="Submit comment">${translations[currentLang].comment}</button></div>`;
+    html += `</div>`;
+    card.innerHTML = html;
+    area.appendChild(card);
+  });
+}
+
+function summarizeReacts(reactions) {
+  const map = {};
+  Object.keys(REACTS).forEach(k => map[k] = 0);
+  Object.values(reactions || {}).forEach(v => map[v] = (map[v] || 0) + 1);
+  return Object.keys(map).map(k => ({type: k, count: map[k]})).sort((a, b) => b.count - a.count);
+}
+
+async function toggleReact(postId, reactType) {
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  const post = store.posts.find(p => p.id === postId);
+  if (!post) return;
+  const prev = post.reactions[currentUser.id];
+  if (prev === reactType) delete post.reactions[currentUser.id];
+  else post.reactions[currentUser.id] = reactType;
+  await saveDataToMega();
+  renderFeed();
+}
+
+async function addComment(postId) {
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  const inp = document.getElementById('commentInput-' + postId);
+  const text = sanitizeInput(inp.value.trim());
+  if (!text) return;
+  const post = store.posts.find(p => p.id === postId);
+  if (!post) { alert(translations[currentLang].postNotFound); return; }
+  const comment = { id: uid('c'), userId: currentUser.id, text, replies: [] };
+  post.comments.push(comment);
+  await saveDataToMega();
+  renderFeed();
+}
+
+async function replyToComment(postId, commentId) {
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  const inp = document.getElementById(`replyInput-${postId}-${commentId}`);
+  const text = sanitizeInput(inp.value.trim());
+  if (!text) return;
+  const post = store.posts.find(p => p.id === postId);
+  if (!post) return;
+  const comment = post.comments.find(c => c.id === commentId);
+  if (!comment) return;
+  comment.replies.push({ id: uid('r'), userId: currentUser.id, text });
+  await saveDataToMega();
+  renderFeed();
+}
+
+function focusCommentBox(postId) {
+  document.getElementById('commentInput-' + postId).focus();
+}
+
+/* ---------------------------
+  Chat
+---------------------------*/
+function chatId(a, b) { return [a, b].sort().join('_'); }
+
+function renderChatContacts() {
+  const cont = document.getElementById('chatContacts'); cont.innerHTML = '';
+  currentUser.friends.forEach(fid => {
+    const fu = store.users.find(u => u.id === fid);
+    if (fu) {
+      const el = document.createElement('div'); el.className = 'friend-pill'; el.style.cursor = 'pointer';
+      el.innerHTML = `<img src="${fu.pic||''}" style="width:36px;height:36px;border-radius:6px;object-fit:cover" alt="${fu.name}'s picture"/><div><strong>${fu.name}</strong></div>`;
+      el.onclick = () => openChatWith(fid);
+      cont.appendChild(el);
+    }
+  });
+}
+
+function openChatWith(uid) {
+  document.getElementById('chatWindow').classList.remove('hidden');
+  const fu = store.users.find(u => u.id === uid);
+  document.getElementById('chatWith').textContent = translations[currentLang].chatWith + (fu ? fu.name : 'User');
+  document.getElementById('chatMessages').innerHTML = '';
+  const id = chatId(currentUser.id, uid);
+  const conv = store.chats[id] || [];
+  conv.forEach(m => {
+    const p = document.createElement('div'); p.innerHTML = `<div style="font-size:13px"><strong>${(store.users.find(u => u.id === m.from) || {name: translations[currentLang].you}).name}</strong> <span class="small muted">${new Date(m.t).toLocaleString()}</span></div><div>${escapeHtml(m.text)}</div>`;
+    document.getElementById('chatMessages').appendChild(p);
+  });
+  document.getElementById('chatWindow').dataset.with = uid;
+}
+
+async function sendChat() {
+  if (!megaStorage) {
+    alert(translations[currentLang].storageNotInitialized);
+    return;
+  }
+  const txt = sanitizeInput(document.getElementById('chatMsg').value.trim());
+  if (!txt) return;
+  const to = document.getElementById('chatWindow').dataset.with;
+  if (!to) return alert(translations[currentLang].selectFriend);
+  const id = chatId(currentUser.id, to);
+  if (!store.chats[id]) store.chats[id] = [];
+  store.chats[id].push({ from: currentUser.id, to, text: txt, t: Date.now() });
+  await saveDataToMega();
+  document.getElementById('chatMsg').value = '';
+  openChatWith(to);
+}
+
+/* ---------------------------
+  Language
+---------------------------*/
+let currentLang = 'bn';
+const translations = {
+  bn: {
+    login: 'লগইন',
+    signup: 'সাইনআপ',
+    forgot: 'পাসওয়ার্ড রিসেট',
+    profile: 'প্রোফাইল',
+    users: 'ব্যবহারকারী',
+    requests: 'রিকোয়েস্ট',
+    feed: 'নিউজফিড',
+    chat: 'চ্যাট',
+    notifications: 'নোটিফিকেশন',
+    logout: 'লগআউট',
+    fillAllFields: 'সমস্ত ক্ষেত্র পূরণ করুন',
+    invalidEmail: 'বৈধ ইমেইল প্রবেশ করান',
+    passwordTooShort: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে',
+    emailExists: 'ইমেইল ইতিমধ্যে নিবন্ধিত',
+    signupSuccess: 'নিবন্ধন সফল! এখন লগইন করুন।',
+    invalidCredentials: 'ভুল ইমেইল বা পাসওয়ার্ড',
+    emailNotFound: 'ইমেইলটি নিবন্ধিত নয়',
+    passwordResetSuccess: 'পাসওয়ার্ড রিসেট সফল! এখন লগইন করুন।',
+    show: 'দেখান',
+    hide: 'লুকান',
+    friends: 'বন্ধু',
+    cancelRequest: 'রিকোয়েস্ট বাতিল',
+    sendRequest: 'রিকোয়েস্ট পাঠান',
+    thisIsYou: 'এটি আপনি',
+    unfriend: 'আনফ্রেন্ড',
+    acceptRequest: 'রিকোয়েস্ট গ্রহণ',
+    viewGallery: 'গ্যালারি দেখুন',
+    gallery: 'গ্যালারি',
+    friendRequestText: 'আপনার বন্ধু হতে চায়',
+    accept: 'গ্রহণ',
+    decline: 'প্রত্যাখ্যান',
+    to: 'প্রতি:',
+    cancel: 'বাতিল',
+    reactions: 'রিঅ্যাকশন',
+    comment: 'মন্তব্য',
+    reply: 'উত্তর',
+    writeComment: 'মন্তব্য লিখুন...',
+    loginFirst: 'প্রথমে লগইন করুন',
+    postNotFound: 'পোস্ট পাওয়া যায়নি',
+    chatWith: 'চ্যাট করুন ',
+    you: 'আপনি',
+    selectFriend: 'একজন বন্ধু নির্বাচন করুন',
+    requestSent: 'ফ্রেন্ড রিকোয়েস্ট পাঠানো হয়েছে',
+    requestCancelled: 'রিকোয়েস্ট বাতিল করা হয়েছে',
+    friendAdded: 'বন্ধু যোগ করা হয়েছে',
+    requestDeclined: 'রিকোয়েস্ট প্রত্যাখ্যান করা হয়েছে',
+    unfriended: 'আনফ্রেন্ড করা হয়েছে',
+    saved: 'সংরক্ষিত',
+    notSet: 'নির্ধারিত নয়',
+    uploadFailed: 'আপলোড ব্যর্থ হয়েছে',
+    storageNotInitialized: 'স্টোরেজ প্রস্তুত নয়। আবার চেষ্টা করুন।',
+    profilePicUploaded: 'প্রোফাইল ছবি আপলোড সফল',
+    galleryUploaded: 'গ্যালারি ছবি আপলোড সফল',
+    postCreated: 'পোস্ট তৈরি সফল'
+  },
+  en: {
+    login: 'Login',
+    signup: 'Signup',
+    forgot: 'Reset Password',
+    profile: 'Profile',
+    users: 'Users',
+    requests: 'Requests',
+    feed: 'Feed',
+    chat: 'Chat',
+    notifications: 'Notifications',
+    logout: 'Logout',
+    fillAllFields: 'Please fill all fields',
+    invalidEmail: 'Enter a valid email',
+    passwordTooShort: 'Password must be at least 6 characters',
+    emailExists: 'Email already registered',
+    signupSuccess: 'Signup successful! Now login.',
+    invalidCredentials: 'Invalid email or password',
+    emailNotFound: 'Email not found',
+    passwordResetSuccess: 'Password reset successful! Now login.',
+    show: 'Show',
+    hide: 'Hide',
+    friends: 'Friends',
+    cancelRequest: 'Cancel Request',
+    sendRequest: 'Send Request',
+    thisIsYou: 'This is you',
+    unfriend: 'Unfriend',
+    acceptRequest: 'Accept Request',
+    viewGallery: 'View Gallery',
+    gallery: 'Gallery',
+    friendRequestText: 'wants to be your friend',
+    accept: 'Accept',
+    decline: 'Decline',
+    to: 'To:',
+    cancel: 'Cancel',
+    reactions: 'Reactions',
+    comment: 'Comment',
+    reply: 'Reply',
+    writeComment: 'Write a comment...',
+    loginFirst: 'Please login first',
+    postNotFound: 'Post not found',
+    chatWith: 'Chat with ',
+    you: 'You',
+    selectFriend: 'Select a friend',
+    requestSent: 'Friend request sent',
+    requestCancelled: 'Request cancelled',
+    friendAdded: 'Friend added',
+    requestDeclined: 'Request declined',
+    unfriended: 'Unfriended',
+    saved: 'Saved',
+    notSet: 'Not set',
+    uploadFailed: 'Upload failed',
+    storageNotInitialized: 'Storage not initialized. Please try again.',
+    profilePicUploaded: 'Profile picture uploaded successfully',
+    galleryUploaded: 'Gallery images uploaded successfully',
+    postCreated: 'Post created successfully'
+  }
+};
+
+function setLanguage(lang) {
+  if (!translations[lang]) lang = 'bn';
+  currentLang = lang;
+  const t = translations[lang];
+  document.getElementById('loginTitle').textContent = t.login;
+  document.getElementById('signupTitle').textContent = t.signup;
+  document.getElementById('forgotTitle').textContent = t.forgot;
+  document.getElementById('navProfile').setAttribute('data-tooltip', t.profile);
+  document.getElementById('navBrowse').setAttribute('data-tooltip', t.users);
+  document.getElementById('navRequests').setAttribute('data-tooltip', t.requests);
+  document.getElementById('navFeed').setAttribute('data-tooltip', t.feed);
+  document.getElementById('navChat').setAttribute('data-tooltip', t.chat);
+  document.getElementById('navNotifications').setAttribute('data-tooltip', t.notifications);
+  document.getElementById('navLogout').setAttribute('data-tooltip', t.logout);
+  document.getElementById('newPostText').placeholder = t.writeComment;
+  renderUsersList();
+  renderRequests();
+  renderFeed();
+  renderNotifications();
+  if (document.getElementById('chatWindow').dataset.with) {
+    openChatWith(document.getElementById('chatWindow').dataset.with);
+  }
+}
+
+/* ---------------------------
+  Logout
+---------------------------*/
+function logout() {
+  currentUser = null;
+  document.getElementById('mainNav').style.display = 'none';
+  showSection('loginPanel');
+}
+
+/* ---------------------------
+  Initial UI State
+---------------------------*/
+(async function init() {
+  ['loginPanel', 'signupPanel', 'forgotPanel', 'profilePanel', 'browsePanel', 'requestsPanel', 'feedPanel', 'chatPanel', 'notificationsPanel'].forEach(s => {
+    document.getElementById(s).style.display = 'none';
+  });
+  document.getElementById('loginPanel').style.display = 'block';
+  setLanguage('bn');
+  document.getElementById('loginEmail').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('loginPass').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('regName').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') doSignup();
+  });
+  document.getElementById('regEmail').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') doSignup();
+  });
+  document.getElementById('regPass').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') doSignup();
+  });
+  document.getElementById('forgotEmail').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') resetPassword();
+  });
+  document.getElementById('forgotNewPass').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') resetPassword();
+  });
+
+  // Initialize MEGA storage automatically
+  await connectMega();
+})();
+</script>
+</body>
+</html>
