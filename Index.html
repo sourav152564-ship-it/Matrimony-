@@ -2,14 +2,11 @@
 <html lang="bn">
 <head>
   <meta charset="utf-8" />
-  <title>Matrimonial - Social Prototype with MEGA Storage</title>
+  <title>Matrimonial - Social Prototype with Local Storage</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <!-- CryptoJS for password hashing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-  <!-- MegaJS for file uploads -->
-  <script src="https://unpkg.com/megajs@1.1.2/dist/main.browser-es.min.js" type="module"></script>
   <style>
-    /* Unchanged CSS from original code */
     :root{--primary:#ff4d6d;--muted:#777}
     body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f4f6f8;color:#222}
     header{background:var(--primary);color:#fff;padding:10px 12px;display:flex;align-items:center;justify-content:space-between}
@@ -77,6 +74,7 @@
     <button id="navFeed" onclick="showSection('feedPanel')" data-tooltip="নিউজফিড" aria-label="Feed">📰</button>
     <button id="navChat" onclick="showSection('chatPanel')" data-tooltip="চ্যাট" aria-label="Chat">💬</button>
     <button id="navNotifications" onclick="showSection('notificationsPanel')" data-tooltip="নোটিফিকেশন" aria-label="Notifications">🔔</button>
+    <button id="navAdmin" onclick="showSection('adminPanel')" data-tooltip="অ্যাডমিন" aria-label="Admin" style="display:none">🔧</button>
     <button id="navLogout" onclick="logout()" data-tooltip="লগআউট" aria-label="Logout">🚪</button>
   </nav>
 
@@ -132,6 +130,15 @@
       </div>
     </section>
 
+    <!-- ADMIN PANEL -->
+    <section id="adminPanel" class="card">
+      <h2>অ্যাডমিন প্যানেল</h2>
+      <div id="adminError" class="error-message"></div>
+      <div id="adminSuccess" class="success-message"></div>
+      <h3>ইউজার লিস্ট</h3>
+      <div id="userList"></div>
+    </section>
+
     <!-- PROFILE -->
     <section id="profilePanel" class="card">
       <div style="display:flex;gap:12px;align-items:center">
@@ -147,9 +154,11 @@
         </div>
         <div style="margin-left:auto">
           <button onclick="toggleEditMe()" id="btnEditMe" class="btn-outline" aria-label="Edit profile">Edit</button>
+          <button onclick="deleteMyData()" class="btn-outline" style="background:#d32f2f;color:#fff;border:none" aria-label="Delete my data">ডাটা ডিলিট</button>
         </div>
       </div>
       <div id="profileError" class="error-message"></div>
+      <div id="profileSuccess" class="success-message"></div>
       <div id="meEdit" class="hidden" style="margin-top:10px">
         <input id="meNameInput" placeholder="Name" aria-label="Name">
         <input id="meLocationInput" placeholder="Location" aria-label="Location">
@@ -241,22 +250,14 @@
     </section>
   </div>
 
-  <footer>Prototype — all data stored securely</footer>
+  <footer>Prototype — all data stored locally</footer>
 
-<script type="module">
+<script>
 /* ---------------------------
-  MEGA Storage Integration
+  Data Model & Storage
 ---------------------------*/
-import { Storage } from 'https://unpkg.com/megajs@1.1.2/dist/main.browser-es.min.js';
-
-// SECURITY WARNING: Hardcoding credentials in client-side code is insecure for production.
-// For production, move MEGA authentication to a secure backend server and use API calls.
-const megaCredentials = {
-  email: atob('U291cmF2NjI5MDE1QGdtYWlsLmNvbQ=='), // Sourav629015@gmail.com
-  password: atob('U291cmF2QDEyMzQ=') // Sourav@1234
-};
-
-let megaStorage = null;
+const ADMIN_EMAIL = 'your_admin_email@gmail.com'; // Replace with your admin email
+let currentUser = null;
 let store = {
   users: [],
   posts: [],
@@ -264,158 +265,93 @@ let store = {
   notifications: {}
 };
 
-// Initialize MEGA storage in the background
-async function connectMega() {
-  console.log('Attempting to connect to MEGA...');
+function uid(prefix = 'id') { return prefix + Math.random().toString(36).slice(2, 9); }
+function showLoading() { document.getElementById('loading').style.display = 'block'; }
+function hideLoading() { document.getElementById('loading').style.display = 'none'; }
+function sanitizeInput(str) { return String(str).replace(/[<>]/g, ''); }
+function hashPassword(password) { return CryptoJS.SHA256(password).toString(); }
+function validateEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+function escapeHtml(str = '') { return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s]); }
+
+async function saveDataToLocalStorage(userId) {
   try {
-    megaStorage = new Storage({
-      email: megaCredentials.email,
-      password: megaCredentials.password
-    });
-    await new Promise((resolve, reject) => {
-      megaStorage.on('ready', () => {
-        console.log('MEGA connected successfully');
-        resolve();
-      });
-      megaStorage.on('error', (err) => {
-        console.error('MEGA connection error:', err);
-        reject(err);
-      });
-    });
-    console.log('Loading data from MEGA...');
-    await loadDataFromMega();
+    localStorage.setItem(`matrimonial_${userId}`, JSON.stringify(store));
+    console.log(`Data saved to localStorage for user ${userId}`);
   } catch (err) {
-    console.error('MEGA login error:', err);
-    // Fallback to default data if MEGA connection fails
-    initializeDefaultData();
-  } finally {
-    hideLoading();
+    console.error('Error saving to localStorage:', err);
+    showError('profileError', translations[currentLang].genericError);
   }
 }
 
-async function saveDataToMega() {
-  if (!megaStorage) {
-    console.error('Cannot save: MEGA storage not initialized');
-    return;
-  }
+async function loadDataFromLocalStorage(userId) {
   try {
-    const dataStr = JSON.stringify(store);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const fileName = 'matrimonial_data.json';
-    const existingFile = megaStorage.root.children.find(f => f.name === fileName);
-    if (existingFile) await existingFile.delete();
-    await megaStorage.upload(fileName, blob).complete;
-    console.log('Data saved to MEGA:', fileName);
-  } catch (err) {
-    console.error('Error saving data to MEGA:', err);
-    throw err;
-  }
-}
-
-async function loadDataFromMega() {
-  try {
-    const file = megaStorage.root.children.find(f => f.name === 'matrimonial_data.json');
-    if (file) {
-      const data = await file.downloadBuffer();
-      store = JSON.parse(data.toString());
-      console.log('Data loaded from MEGA:', store);
+    const data = localStorage.getItem(`matrimonial_${userId}`);
+    if (data) {
+      store = JSON.parse(data);
+      console.log(`Data loaded from localStorage for user ${userId}`);
     } else {
-      console.log('No data file found in MEGA, initializing default data');
-      initializeDefaultData();
-      await saveDataToMega();
+      console.log(`No data found in localStorage for user ${userId}`);
+      initializeDefaultData(userId);
     }
   } catch (err) {
-    console.error('Error loading data from MEGA:', err);
-    initializeDefaultData();
+    console.error('Error loading from localStorage:', err);
+    initializeDefaultData(userId);
   }
 }
 
-function initializeDefaultData() {
+function initializeDefaultData(userId) {
   store = {
-    users: [
-      {
-        id: 'u1',
-        name: 'Sourav Dey',
-        email: 'sourav@example.com',
-        pass: CryptoJS.SHA256('1234').toString(),
-        location: 'Dhaka',
-        age: 30,
-        gender: 'male',
-        occupation: 'Engineer',
-        pic: '',
-        gallery: [],
-        friends: ['u2'],
-        friendRequests: [],
-        sentRequests: []
-      },
-      {
-        id: 'u2',
-        name: 'Rahim',
-        email: 'rahim@example.com',
-        pass: CryptoJS.SHA256('1234').toString(),
-        location: 'Chittagong',
-        age: 28,
-        gender: 'male',
-        occupation: 'Teacher',
-        pic: '',
-        gallery: [],
-        friends: ['u1'],
-        friendRequests: [],
-        sentRequests: []
-      },
-      {
-        id: 'u3',
-        name: 'Karim',
-        email: 'karim@example.com',
-        pass: CryptoJS.SHA256('1234').toString(),
-        location: 'Sylhet',
-        age: 25,
-        gender: 'male',
-        occupation: 'Student',
-        pic: '',
-        gallery: [],
-        friends: [],
-        friendRequests: [],
-        sentRequests: []
-      }
-    ],
-    posts: [
-      { id: 'p1', userId: 'u2', text: 'Hello, joining here!', images: [], reactions: {}, comments: [] }
-    ],
+    users: [{
+      id: userId,
+      name: currentUser.name,
+      email: currentUser.email,
+      pass: currentUser.pass,
+      location: '',
+      age: '',
+      gender: '',
+      occupation: '',
+      pic: '',
+      gallery: [],
+      friends: [],
+      friendRequests: [],
+      sentRequests: [],
+      status: 'active'
+    }],
+    posts: [],
     chats: {},
     notifications: {}
   };
   console.log('Default data initialized:', store);
 }
 
-/* ---------------------------
-  Data model
----------------------------*/
-function uid(prefix = 'id') { return prefix + Math.random().toString(36).slice(2, 9); }
-
-/* ---------------------------
-  Helpers
----------------------------*/
-function showLoading() { document.getElementById('loading').style.display = 'block'; }
-function hideLoading() { document.getElementById('loading').style.display = 'none'; }
-function sanitizeInput(str) { return String(str).replace(/[<>]/g, ''); }
-function hashPassword(password) { return CryptoJS.SHA256(password).toString(); }
-function validateEmail(email) {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email);
+async function saveUserListToLocalStorage(userList) {
+  try {
+    localStorage.setItem('user_list', JSON.stringify(userList));
+    console.log('User list saved to localStorage');
+  } catch (err) {
+    console.error('Error saving user list to localStorage:', err);
+    showError('adminError', translations[currentLang].genericError);
+  }
 }
-function escapeHtml(str = '') { return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s]); }
+
+async function loadUserListFromLocalStorage() {
+  try {
+    const localData = localStorage.getItem('user_list');
+    return localData ? JSON.parse(localData) : [];
+  } catch (err) {
+    console.error('Error loading user list from localStorage:', err);
+    return [];
+  }
+}
 
 /* ---------------------------
-  Auth & UI helpers
+  Auth & UI Helpers
 ---------------------------*/
-let currentUser = null;
-
 function showSection(id) {
-  ['loginPanel', 'signupPanel', 'forgotPanel', 'profilePanel', 'browsePanel', 'requestsPanel', 'feedPanel', 'chatPanel', 'notificationsPanel'].forEach(s => {
+  ['loginPanel', 'signupPanel', 'forgotPanel', 'profilePanel', 'browsePanel', 'requestsPanel', 'feedPanel', 'chatPanel', 'notificationsPanel', 'adminPanel'].forEach(s => {
     document.getElementById(s).style.display = 'none';
   });
-  ['loginError', 'signupError', 'forgotError', 'profileError', 'galleryError', 'postError'].forEach(e => {
+  ['loginError', 'signupError', 'forgotError', 'profileError', 'galleryError', 'postError', 'adminError'].forEach(e => {
     document.getElementById(e).style.display = 'none';
     document.getElementById(e).textContent = '';
   });
@@ -454,7 +390,6 @@ function togglePassword(inputId, toggleEl) {
 }
 
 async function doSignup() {
-  console.log('doSignup called');
   showLoading();
   try {
     const name = sanitizeInput(document.getElementById('regName').value.trim());
@@ -462,32 +397,27 @@ async function doSignup() {
     const pass = document.getElementById('regPass').value.trim();
 
     if (!name || !email || !pass) {
-      console.log('Empty fields detected');
       showError('signupError', translations[currentLang].fillAllFields);
-      hideLoading();
       return;
     }
     if (!validateEmail(email)) {
-      console.log('Invalid email format');
       showError('signupError', translations[currentLang].invalidEmail);
-      hideLoading();
       return;
     }
     if (pass.length < 6) {
-      console.log('Password too short');
       showError('signupError', translations[currentLang].passwordTooShort);
-      hideLoading();
-      return;
-    }
-    if (store.users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
-      console.log('Email already exists');
-      showError('signupError', translations[currentLang].emailExists);
-      hideLoading();
       return;
     }
 
-    const newU = {
-      id: uid('u'),
+    let userList = await loadUserListFromLocalStorage();
+    if (userList.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+      showError('signupError', translations[currentLang].emailExists);
+      return;
+    }
+
+    const userId = uid('u');
+    const newUser = {
+      id: userId,
       name,
       email,
       pass: hashPassword(pass),
@@ -499,109 +429,108 @@ async function doSignup() {
       gallery: [],
       friends: [],
       friendRequests: [],
-      sentRequests: []
+      sentRequests: [],
+      status: 'active'
     };
-    store.users.push(newU);
-    if (megaStorage) await saveDataToMega();
+    userList.push({ id: userId, email, pass: hashPassword(pass), status: 'active' });
+    await saveUserListToLocalStorage(userList);
+
+    currentUser = newUser;
+    store.users.push(newUser);
+    await saveDataToLocalStorage(userId);
 
     document.getElementById('regName').value = '';
     document.getElementById('regEmail').value = '';
     document.getElementById('regPass').value = '';
     document.querySelector('#regPass + .password-toggle').textContent = translations[currentLang].show;
 
-    showSection('loginPanel');
-    showSuccess('loginMessage', translations[currentLang].signupSuccess);
-    hideLoading();
+    showSection('profilePanel');
+    showSuccess('profileSuccess', translations[currentLang].signupSuccess);
+    onLogin();
   } catch (err) {
     console.error('Signup error:', err);
     showError('signupError', translations[currentLang].genericError);
+  } finally {
     hideLoading();
   }
 }
 
 async function doLogin() {
-  console.log('doLogin called');
   showLoading();
   try {
     const email = document.getElementById('loginEmail').value.trim();
     const pass = document.getElementById('loginPass').value.trim();
-    console.log('Email:', email, 'Password:', pass);
 
     if (!email || !pass) {
-      console.log('Empty fields detected');
       showError('loginError', translations[currentLang].fillAllFields);
-      hideLoading();
       return;
     }
     if (!validateEmail(email)) {
-      console.log('Invalid email format');
       showError('loginError', translations[currentLang].invalidEmail);
-      hideLoading();
       return;
     }
 
-    const hashedPass = hashPassword(pass);
-    console.log('Hashed Password:', hashedPass);
-    const user = store.users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.pass === hashedPass);
-    console.log('Found User:', user);
-
-    if (!user) {
-      console.log('No user found or invalid credentials');
+    let userList = await loadUserListFromLocalStorage();
+    const userMeta = userList.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!userMeta) {
       showError('loginError', translations[currentLang].invalidCredentials);
-      hideLoading();
+      return;
+    }
+    if (userMeta.pass !== hashPassword(pass)) {
+      showError('loginError', translations[currentLang].invalidCredentials);
+      return;
+    }
+    if (userMeta.status !== 'active') {
+      showError('loginError', translations[currentLang].accountBlocked);
       return;
     }
 
-    currentUser = user;
+    currentUser = { id: userMeta.id, email: userMeta.email, pass: userMeta.pass };
+    await loadDataFromLocalStorage(userMeta.id);
+    currentUser = store.users.find(u => u.id === userMeta.id) || currentUser;
+
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginPass').value = '';
     document.querySelector('#loginPass + .password-toggle').textContent = translations[currentLang].show;
-    console.log('Login successful, calling onLogin');
+
+    showSection('profilePanel');
     onLogin();
-    hideLoading();
   } catch (err) {
     console.error('Login error:', err);
     showError('loginError', translations[currentLang].genericError);
+  } finally {
     hideLoading();
   }
 }
 
 async function resetPassword() {
-  console.log('resetPassword called');
   showLoading();
   try {
     const email = document.getElementById('forgotEmail').value.trim();
     const newPass = document.getElementById('forgotNewPass').value.trim();
 
     if (!email || !newPass) {
-      console.log('Empty fields detected');
       showError('forgotError', translations[currentLang].fillAllFields);
-      hideLoading();
       return;
     }
     if (!validateEmail(email)) {
-      console.log('Invalid email format');
       showError('forgotError', translations[currentLang].invalidEmail);
-      hideLoading();
       return;
     }
     if (newPass.length < 6) {
-      console.log('Password too short');
       showError('forgotError', translations[currentLang].passwordTooShort);
-      hideLoading();
       return;
     }
 
-    const user = store.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    let userList = await loadUserListFromLocalStorage();
+    const user = userList.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (!user) {
-      console.log('Email not found');
       showError('forgotError', translations[currentLang].emailNotFound);
-      hideLoading();
       return;
     }
 
     user.pass = hashPassword(newPass);
-    if (megaStorage) await saveDataToMega();
+    await saveUserListToLocalStorage(userList);
 
     document.getElementById('forgotEmail').value = '';
     document.getElementById('forgotNewPass').value = '';
@@ -609,17 +538,93 @@ async function resetPassword() {
 
     showSection('loginPanel');
     showSuccess('loginMessage', translations[currentLang].passwordResetSuccess);
-    hideLoading();
   } catch (err) {
     console.error('Reset password error:', err);
     showError('forgotError', translations[currentLang].genericError);
+  } finally {
     hideLoading();
   }
 }
 
+async function deleteMyData() {
+  if (!currentUser) return;
+  showLoading();
+  try {
+    let userList = await loadUserListFromLocalStorage();
+    userList = userList.filter(u => u.id !== currentUser.id);
+    await saveUserListToLocalStorage(userList);
+    localStorage.removeItem(`matrimonial_${currentUser.id}`);
+    store = { users: [], posts: [], chats: {}, notifications: {} };
+    showSuccess('profileSuccess', translations[currentLang].dataDeleted);
+    renderMyProfile();
+    logout();
+  } catch (err) {
+    console.error('Delete data error:', err);
+    showError('profileError', translations[currentLang].genericError);
+  } finally {
+    hideLoading();
+  }
+}
+
+async function renderAdminPanel() {
+  if (currentUser.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+    showError('adminError', translations[currentLang].adminAccessDenied);
+    return;
+  }
+  showLoading();
+  try {
+    const userList = await loadUserListFromLocalStorage();
+    const userListEl = document.getElementById('userList');
+    userListEl.innerHTML = userList.map(u => `
+      <div style="margin:10px 0">
+        ${escapeHtml(u.email)} (${u.status})
+        <button onclick="deleteUser('${u.id}')" style="background:#d32f2f;color:#fff;border:none;padding:6px;border-radius:4px;margin:0 5px">ডিলিট</button>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error('Render admin panel error:', err);
+    showError('adminError', translations[currentLang].genericError);
+  } finally {
+    hideLoading();
+  }
+}
+
+async function deleteUser(userId) {
+  if (currentUser.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+    showError('adminError', translations[currentLang].adminAccessDenied);
+    return;
+  }
+  showLoading();
+  try {
+    let userList = await loadUserListFromLocalStorage();
+    const userIndex = userList.findIndex(u => u.id === userId);
+    if (userIndex !== -1) {
+      userList[userIndex].status = 'deleted';
+      await saveUserListToLocalStorage(userList);
+      showSuccess('adminSuccess', translations[currentLang].userDeleted);
+      renderAdminPanel();
+    }
+  } catch (err) {
+    console.error('Delete user error:', err);
+    showError('adminError', translations[currentLang].genericError);
+  } finally {
+    hideLoading();
+  }
+}
+
+function logout() {
+  currentUser = null;
+  store = { users: [], posts: [], chats: {}, notifications: {} };
+  document.getElementById('mainNav').style.display = 'none';
+  document.getElementById('navAdmin').style.display = 'none';
+  showSection('loginPanel');
+}
+
 function onLogin() {
-  console.log('onLogin called');
   document.getElementById('mainNav').style.display = 'flex';
+  if (currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+    document.getElementById('navAdmin').style.display = 'inline-block';
+  }
   renderMyProfile();
   renderUsersList();
   renderRequests();
@@ -633,24 +638,20 @@ function onLogin() {
   Profile Image Upload
 ---------------------------*/
 async function updateMyPic(inp) {
-  if (!megaStorage) {
-    console.log('Cannot upload: MEGA storage not initialized');
-    showError('profileError', translations[currentLang].genericError);
-    return;
-  }
   const file = inp.files[0];
   if (!file) return;
   showLoading();
   try {
     const blob = await compressImage(file);
-    const fileName = `${currentUser.id}_profile_${Date.now()}.jpg`;
-    const uploadedFile = await megaStorage.upload(fileName, blob).complete;
-    const link = await uploadedFile.link();
-    currentUser.pic = link;
-    await saveDataToMega();
-    renderMyProfile();
-    showSuccess('profileError', translations[currentLang].profilePicUploaded);
-    hideLoading();
+    const reader = new FileReader();
+    reader.onload = async () => {
+      currentUser.pic = reader.result;
+      await saveDataToLocalStorage(currentUser.id);
+      renderMyProfile();
+      showSuccess('profileSuccess', translations[currentLang].profilePicUploaded);
+      hideLoading();
+    };
+    reader.readAsDataURL(blob);
   } catch (err) {
     console.error('Profile pic upload error:', err);
     showError('profileError', translations[currentLang].uploadFailed);
@@ -680,11 +681,6 @@ function compressImage(file) {
   Gallery Image Upload
 ---------------------------*/
 async function addMyGallery(inp) {
-  if (!megaStorage) {
-    console.log('Cannot upload: MEGA storage not initialized');
-    showError('galleryError', translations[currentLang].genericError);
-    return;
-  }
   const files = Array.from(inp.files || []);
   if (files.length === 0) return;
   showLoading();
@@ -692,14 +688,15 @@ async function addMyGallery(inp) {
   try {
     for (const file of files) {
       const blob = await compressImage(file);
-      const fileName = `${currentUser.id}_gallery_${Date.now()}_${Math.random().toString(36).slice(2, 9)}.jpg`;
-      const uploadedFile = await megaStorage.upload(fileName, blob).complete;
-      const link = await uploadedFile.link();
-      currentUser.gallery.push(link);
+      const reader = new FileReader();
+      reader.onload = () => {
+        currentUser.gallery.push(reader.result);
+      };
+      reader.readAsDataURL(blob);
     }
-    await saveDataToMega();
+    await saveDataToLocalStorage(currentUser.id);
     renderMyProfile();
-    showSuccess('galleryError', translations[currentLang].galleryUploaded);
+    showSuccess('profileSuccess', translations[currentLang].galleryUploaded);
     hideLoading();
   } catch (err) {
     console.error('Gallery upload error:', err);
@@ -713,13 +710,7 @@ async function addMyGallery(inp) {
 ---------------------------*/
 async function createPost() {
   if (!currentUser) {
-    console.log('User not logged in');
     showError('postError', translations[currentLang].loginFirst);
-    return;
-  }
-  if (!megaStorage) {
-    console.log('Cannot post: MEGA storage not initialized');
-    showError('postError', translations[currentLang].genericError);
     return;
   }
   const text = sanitizeInput(document.getElementById('newPostText').value.trim());
@@ -730,14 +721,15 @@ async function createPost() {
   try {
     for (const file of files) {
       const blob = await compressImage(file);
-      const fileName = `${currentUser.id}_post_${Date.now()}_${Math.random().toString(36).slice(2, 9)}.jpg`;
-      const uploadedFile = await megaStorage.upload(fileName, blob).complete;
-      const link = await uploadedFile.link();
-      images.push(link);
+      const reader = new FileReader();
+      reader.onload = () => {
+        images.push(reader.result);
+      };
+      reader.readAsDataURL(blob);
     }
     const post = { id: uid('p'), userId: currentUser.id, text, images, reactions: {}, comments: [] };
     store.posts.unshift(post);
-    await saveDataToMega();
+    await saveDataToLocalStorage(currentUser.id);
     renderFeed();
     clearPost();
     showSuccess('postError', translations[currentLang].postCreated);
@@ -754,8 +746,8 @@ async function createPost() {
 ---------------------------*/
 function renderMyProfile() {
   if (!currentUser) return;
-  document.getElementById('meName').textContent = currentUser.name;
-  document.getElementById('meEmail').textContent = currentUser.email;
+  document.getElementById('meName').textContent = currentUser.name || 'N/A';
+  document.getElementById('meEmail').textContent = currentUser.email || 'N/A';
   document.getElementById('meLocation').textContent = currentUser.location || translations[currentLang].notSet;
   document.getElementById('meAge').textContent = currentUser.age ? `${currentUser.age} years` : translations[currentLang].notSet;
   document.getElementById('meGender').textContent = currentUser.gender || translations[currentLang].notSet;
@@ -786,20 +778,15 @@ function renderMyProfile() {
 async function toggleEditMe() {
   document.getElementById('meEdit').classList.toggle('hidden');
   if (!document.getElementById('meEdit').classList.contains('hidden')) {
-    document.getElementById('meNameInput').value = currentUser.name;
-    document.getElementById('meLocationInput').value = currentUser.location;
-    document.getElementById('meAgeInput').value = currentUser.age;
-    document.getElementById('meGenderInput').value = currentUser.gender;
-    document.getElementById('meOccupationInput').value = currentUser.occupation;
+    document.getElementById('meNameInput').value = currentUser.name || '';
+    document.getElementById('meLocationInput').value = currentUser.location || '';
+    document.getElementById('meAgeInput').value = currentUser.age || '';
+    document.getElementById('meGenderInput').value = currentUser.gender || '';
+    document.getElementById('meOccupationInput').value = currentUser.occupation || '';
   }
 }
 
 async function saveMe() {
-  if (!megaStorage) {
-    console.log('Cannot save: MEGA storage not initialized');
-    showError('profileError', translations[currentLang].genericError);
-    return;
-  }
   showLoading();
   try {
     currentUser.name = sanitizeInput(document.getElementById('meNameInput').value || currentUser.name);
@@ -807,10 +794,10 @@ async function saveMe() {
     currentUser.age = document.getElementById('meAgeInput').value || currentUser.age;
     currentUser.gender = document.getElementById('meGenderInput').value || currentUser.gender;
     currentUser.occupation = sanitizeInput(document.getElementById('meOccupationInput').value || currentUser.occupation);
-    await saveDataToMega();
+    await saveDataToLocalStorage(currentUser.id);
     renderMyProfile();
     toggleEditMe();
-    showSuccess('profileError', translations[currentLang].saved);
+    showSuccess('profileSuccess', translations[currentLang].saved);
     hideLoading();
   } catch (err) {
     console.error('Save profile error:', err);
@@ -820,12 +807,12 @@ async function saveMe() {
 }
 
 /* ---------------------------
-  Browse users & profiles
+  Browse Users & Profiles
 ---------------------------*/
 function renderUsersList() {
   const list = document.getElementById('usersList');
   list.innerHTML = '';
-  store.users.filter(u => u.id !== currentUser.id).forEach(u => {
+  store.users.filter(u => u.id !== currentUser.id && u.status === 'active').forEach(u => {
     const el = document.createElement('div');
     el.className = 'friend-pill';
     el.innerHTML = `<img src="${u.pic || ''}" style="width:48px;height:48px;border-radius:8px;object-fit:cover" alt="${u.name}'s picture"/><div style="min-width:140px"><strong>${u.name}</strong><div class="small">${u.location || ''}</div><div class="small">${u.age ? u.age + ' years' : ''} ${u.gender || ''}</div></div>`;
@@ -862,7 +849,7 @@ function filterUsers() {
   const list = document.getElementById('usersList');
   list.innerHTML = '';
   store.users
-    .filter(u => u.id !== currentUser.id && (!name || u.name.toLowerCase().includes(name)) && (!gender || u.gender === gender))
+    .filter(u => u.id !== currentUser.id && u.status === 'active' && (!name || u.name.toLowerCase().includes(name)) && (!gender || u.gender === gender))
     .forEach(u => {
       const el = document.createElement('div');
       el.className = 'friend-pill';
@@ -946,11 +933,6 @@ function openProfile(uid) {
 }
 
 async function sendFriendRequest(targetId) {
-  if (!megaStorage) {
-    console.log('Cannot send request: MEGA storage not initialized');
-    showError('profileError', translations[currentLang].genericError);
-    return;
-  }
   showLoading();
   try {
     const target = store.users.find(u => u.id === targetId);
@@ -958,11 +940,11 @@ async function sendFriendRequest(targetId) {
     if (!target.friendRequests.includes(currentUser.id)) target.friendRequests.push(currentUser.id);
     if (!currentUser.sentRequests.includes(targetId)) currentUser.sentRequests.push(targetId);
     addNotification(targetId, `${currentUser.name} ${translations[currentLang].friendRequestText}`);
-    await saveDataToMega();
+    await saveDataToLocalStorage(currentUser.id);
     renderUsersList();
     renderRequests();
     renderNotifications();
-    showSuccess('profileError', translations[currentLang].requestSent);
+    showSuccess('profileSuccess', translations[currentLang].requestSent);
     hideLoading();
   } catch (err) {
     console.error('Send friend request error:', err);
@@ -972,22 +954,17 @@ async function sendFriendRequest(targetId) {
 }
 
 async function cancelRequest(targetId) {
-  if (!megaStorage) {
-    console.log('Cannot cancel request: MEGA storage not initialized');
-    showError('profileError', translations[currentLang].genericError);
-    return;
-  }
   showLoading();
   try {
     const target = store.users.find(u => u.id === targetId);
     if (!target) return;
     target.friendRequests = target.friendRequests.filter(x => x !== currentUser.id);
     currentUser.sentRequests = currentUser.sentRequests.filter(x => x !== targetId);
-    await saveDataToMega();
+    await saveDataToLocalStorage(currentUser.id);
     renderUsersList();
     renderRequests();
     renderNotifications();
-    showSuccess('profileError', translations[currentLang].requestCancelled);
+    showSuccess('profileSuccess', translations[currentLang].requestCancelled);
     hideLoading();
   } catch (err) {
     console.error('Cancel request error:', err);
@@ -997,11 +974,6 @@ async function cancelRequest(targetId) {
 }
 
 async function acceptFriend(fromId) {
-  if (!megaStorage) {
-    console.log('Cannot accept friend: MEGA storage not initialized');
-    showError('profileError', translations[currentLang].genericError);
-    return;
-  }
   showLoading();
   try {
     if (!currentUser.friendRequests.includes(fromId)) return;
@@ -1011,13 +983,13 @@ async function acceptFriend(fromId) {
     currentUser.friendRequests = currentUser.friendRequests.filter(x => x !== fromId);
     if (from) from.sentRequests = from.sentRequests.filter(x => x !== currentUser.id);
     addNotification(fromId, `${currentUser.name} ${translations[currentLang].friendAdded}`);
-    await saveDataToMega();
+    await saveDataToLocalStorage(currentUser.id);
     renderMyProfile();
     renderUsersList();
     renderRequests();
     renderChatContacts();
     renderNotifications();
-    showSuccess('profileError', translations[currentLang].friendAdded);
+    showSuccess('profileSuccess', translations[currentLang].friendAdded);
     hideLoading();
   } catch (err) {
     console.error('Accept friend error:', err);
@@ -1027,20 +999,15 @@ async function acceptFriend(fromId) {
 }
 
 async function declineFriend(fromId) {
-  if (!megaStorage) {
-    console.log('Cannot decline friend: MEGA storage not initialized');
-    showError('profileError', translations[currentLang].genericError);
-    return;
-  }
   showLoading();
   try {
     currentUser.friendRequests = currentUser.friendRequests.filter(x => x !== fromId);
     const from = store.users.find(u => u.id === fromId);
     if (from) from.sentRequests = from.sentRequests.filter(x => x !== currentUser.id);
-    await saveDataToMega();
+    await saveDataToLocalStorage(currentUser.id);
     renderRequests();
     renderNotifications();
-    showSuccess('profileError', translations[currentLang].requestDeclined);
+    showSuccess('profileSuccess', translations[currentLang].requestDeclined);
     hideLoading();
   } catch (err) {
     console.error('Decline friend error:', err);
@@ -1050,22 +1017,17 @@ async function declineFriend(fromId) {
 }
 
 async function unfriend(uid) {
-  if (!megaStorage) {
-    console.log('Cannot unfriend: MEGA storage not initialized');
-    showError('profileError', translations[currentLang].genericError);
-    return;
-  }
   showLoading();
   try {
     currentUser.friends = currentUser.friends.filter(x => x !== uid);
     const other = store.users.find(u => u.id === uid);
     if (other) other.friends = other.friends.filter(x => x !== currentUser.id);
-    await saveDataToMega();
+    await saveDataToLocalStorage(currentUser.id);
     renderMyProfile();
     renderUsersList();
     renderChatContacts();
     renderNotifications();
-    showSuccess('profileError', translations[currentLang].unfriended);
+    showSuccess('profileSuccess', translations[currentLang].unfriended);
     hideLoading();
   } catch (err) {
     console.error('Unfriend error:', err);
@@ -1092,7 +1054,7 @@ async function addNotification(userId, message) {
   try {
     if (!store.notifications[userId]) store.notifications[userId] = [];
     store.notifications[userId].push({ id: uid('n'), message, time: Date.now() });
-    if (megaStorage) await saveDataToMega();
+    await saveDataToLocalStorage(currentUser.id);
   } catch (err) {
     console.error('Add notification error:', err);
   }
@@ -1111,7 +1073,7 @@ function renderNotifications() {
 }
 
 /* ---------------------------
-  Requests panel
+  Requests Panel
 ---------------------------*/
 function renderRequests() {
   const incoming = document.getElementById('incomingRequests');
@@ -1214,11 +1176,6 @@ function summarizeReacts(reactions) {
 }
 
 async function toggleReact(postId, reactType) {
-  if (!megaStorage) {
-    console.log('Cannot react: MEGA storage not initialized');
-    showError('postError', translations[currentLang].genericError);
-    return;
-  }
   showLoading();
   try {
     const post = store.posts.find(p => p.id === postId);
@@ -1226,7 +1183,7 @@ async function toggleReact(postId, reactType) {
     const prev = post.reactions[currentUser.id];
     if (prev === reactType) delete post.reactions[currentUser.id];
     else post.reactions[currentUser.id] = reactType;
-    await saveDataToMega();
+    await saveDataToLocalStorage(currentUser.id);
     renderFeed();
     hideLoading();
   } catch (err) {
@@ -1237,11 +1194,6 @@ async function toggleReact(postId, reactType) {
 }
 
 async function addComment(postId) {
-  if (!megaStorage) {
-    console.log('Cannot comment: MEGA storage not initialized');
-    showError('postError', translations[currentLang].genericError);
-    return;
-  }
   showLoading();
   try {
     const inp = document.getElementById('commentInput-' + postId);
@@ -1254,7 +1206,7 @@ async function addComment(postId) {
     }
     const comment = { id: uid('c'), userId: currentUser.id, text, replies: [] };
     post.comments.push(comment);
-    await saveDataToMega();
+    await saveDataToLocalStorage(currentUser.id);
     renderFeed();
     hideLoading();
   } catch (err) {
@@ -1265,11 +1217,6 @@ async function addComment(postId) {
 }
 
 async function replyToComment(postId, commentId) {
-  if (!megaStorage) {
-    console.log('Cannot reply: MEGA storage not initialized');
-    showError('postError', translations[currentLang].genericError);
-    return;
-  }
   showLoading();
   try {
     const inp = document.getElementById(`replyInput-${postId}-${commentId}`);
@@ -1280,7 +1227,7 @@ async function replyToComment(postId, commentId) {
     const comment = post.comments.find(c => c.id === commentId);
     if (!comment) return;
     comment.replies.push({ id: uid('r'), userId: currentUser.id, text });
-    await saveDataToMega();
+    await saveDataToLocalStorage(currentUser.id);
     renderFeed();
     hideLoading();
   } catch (err) {
@@ -1331,30 +1278,25 @@ function openChatWith(uid) {
 }
 
 async function sendChat() {
-  if (!megaStorage) {
-    console.log('Cannot send chat: MEGA storage not initialized');
-    showError('chatError', translations[currentLang].genericError);
-    return;
-  }
   showLoading();
   try {
     const txt = sanitizeInput(document.getElementById('chatMsg').value.trim());
     if (!txt) return;
     const to = document.getElementById('chatWindow').dataset.with;
     if (!to) {
-      showError('chatError', translations[currentLang].selectFriend);
+      showError('postError', translations[currentLang].selectFriend);
       return;
     }
     const id = chatId(currentUser.id, to);
     if (!store.chats[id]) store.chats[id] = [];
     store.chats[id].push({ from: currentUser.id, to, text: txt, t: Date.now() });
-    await saveDataToMega();
+    await saveDataToLocalStorage(currentUser.id);
     document.getElementById('chatMsg').value = '';
     openChatWith(to);
     hideLoading();
   } catch (err) {
     console.error('Send chat error:', err);
-    showError('chatError', translations[currentLang].genericError);
+    showError('postError', translations[currentLang].genericError);
     hideLoading();
   }
 }
@@ -1375,6 +1317,7 @@ const translations = {
     chat: 'চ্যাট',
     notifications: 'নোটিফিকেশন',
     logout: 'লগআউট',
+    admin: 'অ্যাডমিন',
     fillAllFields: 'সমস্ত ক্ষেত্র পূরণ করুন',
     invalidEmail: 'বৈধ ইমেইল প্রবেশ করান',
     passwordTooShort: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে',
@@ -1418,7 +1361,11 @@ const translations = {
     genericError: 'কিছু ভুল হয়েছে। আবার চেষ্টা করুন।',
     profilePicUploaded: 'প্রোফাইল ছবি আপলোড সফল',
     galleryUploaded: 'গ্যালারি ছবি আপলোড সফল',
-    postCreated: 'পোস্ট তৈরি সফল'
+    postCreated: 'পোস্ট তৈরি সফল',
+    dataDeleted: 'আপনার ডাটা ডিলিট করা হয়েছে',
+    adminAccessDenied: 'অননুমোদিত অ্যাক্সেস',
+    userDeleted: 'ইউজার ডিলিট করা হয়েছে',
+    accountBlocked: 'আপনার অ্যাকাউন্ট ব্লক বা ডিলিট করা হয়েছে'
   },
   en: {
     login: 'Login',
@@ -1431,6 +1378,7 @@ const translations = {
     chat: 'Chat',
     notifications: 'Notifications',
     logout: 'Logout',
+    admin: 'Admin',
     fillAllFields: 'Please fill all fields',
     invalidEmail: 'Enter a valid email',
     passwordTooShort: 'Password must be at least 6 characters',
@@ -1474,7 +1422,11 @@ const translations = {
     genericError: 'Something went wrong. Please try again.',
     profilePicUploaded: 'Profile picture uploaded successfully',
     galleryUploaded: 'Gallery images uploaded successfully',
-    postCreated: 'Post created successfully'
+    postCreated: 'Post created successfully',
+    dataDeleted: 'Your data has been deleted',
+    adminAccessDenied: 'Unauthorized access',
+    userDeleted: 'User deleted successfully',
+    accountBlocked: 'Your account has been blocked or deleted'
   }
 };
 
@@ -1485,68 +1437,21 @@ function setLanguage(lang) {
   document.getElementById('loginTitle').textContent = t.login;
   document.getElementById('signupTitle').textContent = t.signup;
   document.getElementById('forgotTitle').textContent = t.forgot;
-  document.getElementById('navProfile').setAttribute('data-tooltip', t.profile);
-  document.getElementById('navBrowse').setAttribute('data-tooltip', t.users);
-  document.getElementById('navRequests').setAttribute('data-tooltip', t.requests);
-  document.getElementById('navFeed').setAttribute('data-tooltip', t.feed);
-  document.getElementById('navChat').setAttribute('data-tooltip', t.chat);
-  document.getElementById('navNotifications').setAttribute('data-tooltip', t.notifications);
-  document.getElementById('navLogout').setAttribute('data-tooltip', t.logout);
-  document.getElementById('newPostText').placeholder = t.writeComment;
+  document.getElementById('navProfile').dataset.tooltip = t.profile;
+  document.getElementById('navBrowse').dataset.tooltip = t.users;
+  document.getElementById('navRequests').dataset.tooltip = t.requests;
+  document.getElementById('navFeed').dataset.tooltip = t.feed;
+  document.getElementById('navChat').dataset.tooltip = t.chat;
+  document.getElementById('navNotifications').dataset.tooltip = t.notifications;
+  document.getElementById('navAdmin').dataset.tooltip = t.admin;
+  document.getElementById('navLogout').dataset.tooltip = t.logout;
+  renderMyProfile();
   renderUsersList();
   renderRequests();
   renderFeed();
+  renderChatContacts();
   renderNotifications();
-  if (document.getElementById('chatWindow').dataset.with) {
-    openChatWith(document.getElementById('chatWindow').dataset.with);
-  }
 }
-
-/* ---------------------------
-  Logout
----------------------------*/
-function logout() {
-  currentUser = null;
-  document.getElementById('mainNav').style.display = 'none';
-  showSection('loginPanel');
-}
-
-/* ---------------------------
-  Initial UI State
----------------------------*/
-(async function init() {
-  console.log('Initializing app...');
-  ['loginPanel', 'signupPanel', 'forgotPanel', 'profilePanel', 'browsePanel', 'requestsPanel', 'feedPanel', 'chatPanel', 'notificationsPanel'].forEach(s => {
-    document.getElementById(s).style.display = 'none';
-  });
-  document.getElementById('loginPanel').style.display = 'block';
-  setLanguage('bn');
-  document.getElementById('loginEmail').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') doLogin();
-  });
-  document.getElementById('loginPass').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') doLogin();
-  });
-  document.getElementById('regName').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') doSignup();
-  });
-  document.getElementById('regEmail').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') doSignup();
-  });
-  document.getElementById('regPass').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') doSignup();
-  });
-  document.getElementById('forgotEmail').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') resetPassword();
-  });
-  document.getElementById('forgotNewPass').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') resetPassword();
-  });
-
-  console.log('Connecting to MEGA...');
-  await connectMega();
-  console.log('App initialized');
-})();
 </script>
 </body>
 </html>
