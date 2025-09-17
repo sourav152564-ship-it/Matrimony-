@@ -9,6 +9,7 @@
   <!-- MegaJS for file uploads -->
   <script src="https://unpkg.com/megajs@1.1.2/dist/main.browser-es.min.js" type="module"></script>
   <style>
+    /* Unchanged CSS from original code */
     :root{--primary:#ff4d6d;--muted:#777}
     body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f4f6f8;color:#222}
     header{background:var(--primary);color:#fff;padding:10px 12px;display:flex;align-items:center;justify-content:space-between}
@@ -248,6 +249,14 @@
 ---------------------------*/
 import { Storage } from 'https://unpkg.com/megajs@1.1.2/dist/main.browser-es.min.js';
 
+// SECURITY WARNING: Hardcoding credentials in client-side code is insecure for production.
+// For a production environment, move MEGA authentication to a secure backend server and use API calls.
+// The credentials below are encoded in base64 only for basic obfuscation, not security.
+const megaCredentials = {
+  email: atob('U291cmF2NjI5MDE1QGdtYWlsLmNvbQ=='), // Sourav629015@gmail.com
+  password: atob('U291cmF2QDEyMzQ=') // Sourav@1234
+};
+
 let megaStorage = null;
 let store = {
   users: [],
@@ -256,15 +265,8 @@ let store = {
   notifications: {}
 };
 
-// MEGA credentials (encoded for basic obfuscation, not secure for production)
-const megaCredentials = {
-  email: atob('U291cmF2NjI5MDE1QGdtYWlsLmNvbQ=='), // Base64 encoded email
-  password: atob('U291cmF2QDEyMzQ=') // Base64 encoded password
-};
-
+// Initialize MEGA storage in the background
 async function connectMega() {
-  console.log('connectMega called');
-  showLoading();
   try {
     megaStorage = new Storage({
       email: megaCredentials.email,
@@ -273,7 +275,7 @@ async function connectMega() {
 
     await new Promise((resolve, reject) => {
       megaStorage.on('ready', () => {
-        console.log('MEGA connected');
+        console.log('MEGA connected successfully');
         resolve();
       });
       megaStorage.on('error', (err) => {
@@ -284,10 +286,10 @@ async function connectMega() {
 
     // Load existing data from MEGA
     await loadDataFromMega();
-    hideLoading();
   } catch (err) {
     console.error('MEGA login error:', err);
-    alert('Failed to initialize storage. Please try again later.');
+    showError('loginError', translations[currentLang].genericError);
+  } finally {
     hideLoading();
   }
 }
@@ -296,10 +298,10 @@ async function saveDataToMega() {
   try {
     const dataStr = JSON.stringify(store);
     const blob = new Blob([dataStr], { type: 'application/json' });
-    const fileName = 'data.json';
+    const fileName = 'matrimonial_data.json'; // Changed file name for clarity
     const existingFile = megaStorage.root.children.find(f => f.name === fileName);
     if (existingFile) await existingFile.delete();
-    const uploadedFile = await megaStorage.upload(fileName, blob).complete;
+    await megaStorage.upload(fileName, blob).complete;
     console.log('Data saved to MEGA:', fileName);
   } catch (err) {
     console.error('Error saving data to MEGA:', err);
@@ -309,7 +311,7 @@ async function saveDataToMega() {
 
 async function loadDataFromMega() {
   try {
-    const file = megaStorage.root.children.find(f => f.name === 'data.json');
+    const file = megaStorage.root.children.find(f => f.name === 'matrimonial_data.json');
     if (file) {
       const data = await file.downloadBuffer();
       store = JSON.parse(data.toString());
@@ -402,9 +404,8 @@ function togglePassword(inputId, toggleEl) {
 }
 
 async function doSignup() {
-  console.log('doSignup called');
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('signupError', translations[currentLang].genericError);
     return;
   }
   showLoading();
@@ -462,15 +463,14 @@ async function doSignup() {
     hideLoading();
   } catch (err) {
     console.error('Signup error:', err);
-    showError('signupError', 'An error occurred during signup. Please try again.');
+    showError('signupError', translations[currentLang].genericError);
     hideLoading();
   }
 }
 
 async function doLogin() {
-  console.log('doLogin called');
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('loginError', translations[currentLang].genericError);
     return;
   }
   showLoading();
@@ -505,15 +505,14 @@ async function doLogin() {
     hideLoading();
   } catch (err) {
     console.error('Login error:', err);
-    showError('loginError', 'An error occurred during login. Please try again.');
+    showError('loginError', translations[currentLang].genericError);
     hideLoading();
   }
 }
 
 async function resetPassword() {
-  console.log('resetPassword called');
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('forgotError', translations[currentLang].genericError);
     return;
   }
   showLoading();
@@ -556,7 +555,7 @@ async function resetPassword() {
     hideLoading();
   } catch (err) {
     console.error('Reset password error:', err);
-    showError('forgotError', 'An error occurred during password reset. Please try again.');
+    showError('forgotError', translations[currentLang].genericError);
     hideLoading();
   }
 }
@@ -577,7 +576,7 @@ function onLogin() {
 ---------------------------*/
 async function updateMyPic(inp) {
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('profileError', translations[currentLang].genericError);
     return;
   }
   const file = inp.files[0];
@@ -623,7 +622,7 @@ function compressImage(file) {
 ---------------------------*/
 async function addMyGallery(inp) {
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('galleryError', translations[currentLang].genericError);
     return;
   }
   const files = Array.from(inp.files || []);
@@ -653,9 +652,9 @@ async function addMyGallery(inp) {
   Post Image Upload
 ---------------------------*/
 async function createPost() {
-  if (!currentUser) return alert(translations[currentLang].loginFirst);
+  if (!currentUser) return showError('postError', translations[currentLang].loginFirst);
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('postError', translations[currentLang].genericError);
     return;
   }
   const text = sanitizeInput(document.getElementById('newPostText').value.trim());
@@ -728,7 +727,7 @@ async function toggleEditMe() {
 
 async function saveMe() {
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('profileError', translations[currentLang].genericError);
     return;
   }
   showLoading();
@@ -741,11 +740,11 @@ async function saveMe() {
     await saveDataToMega();
     renderMyProfile();
     toggleEditMe();
-    alert(translations[currentLang].saved);
+    showSuccess('profileError', translations[currentLang].saved);
     hideLoading();
   } catch (err) {
     console.error('Save profile error:', err);
-    showError('profileError', 'An error occurred while saving profile.');
+    showError('profileError', translations[currentLang].genericError);
     hideLoading();
   }
 }
@@ -841,7 +840,7 @@ function openProfile(uid) {
 
 async function sendFriendRequest(targetId) {
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('profileError', translations[currentLang].genericError);
     return;
   }
   showLoading();
@@ -853,69 +852,102 @@ async function sendFriendRequest(targetId) {
     addNotification(targetId, `${currentUser.name} ${translations[currentLang].friendRequestText}`);
     await saveDataToMega();
     renderUsersList(); renderRequests(); renderNotifications();
-    alert(translations[currentLang].requestSent);
+    showSuccess('profileError', translations[currentLang].requestSent);
     hideLoading();
   } catch (err) {
     console.error('Send friend request error:', err);
+    showError('profileError', translations[currentLang].genericError);
     hideLoading();
   }
 }
 
 async function cancelRequest(targetId) {
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('profileError', translations[currentLang].genericError);
     return;
   }
-  const target = store.users.find(u => u.id === targetId);
-  if (!target) return;
-  target.friendRequests = target.friendRequests.filter(x => x !== currentUser.id);
-  currentUser.sentRequests = currentUser.sentRequests.filter(x => x !== targetId);
-  await saveDataToMega();
-  renderUsersList(); renderRequests(); renderNotifications();
-  alert(translations[currentLang].requestCancelled);
+  showLoading();
+  try {
+    const target = store.users.find(u => u.id === targetId);
+    if (!target) return;
+    target.friendRequests = target.friendRequests.filter(x => x !== currentUser.id);
+    currentUser.sentRequests = currentUser.sentRequests.filter(x => x !== targetId);
+    await saveDataToMega();
+    renderUsersList(); renderRequests(); renderNotifications();
+    showSuccess('profileError', translations[currentLang].requestCancelled);
+    hideLoading();
+  } catch (err) {
+    console.error('Cancel request error:', err);
+    showError('profileError', translations[currentLang].genericError);
+    hideLoading();
+  }
 }
 
 async function acceptFriend(fromId) {
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('profileError', translations[currentLang].genericError);
     return;
   }
-  if (!currentUser.friendRequests.includes(fromId)) return;
-  if (!currentUser.friends.includes(fromId)) currentUser.friends.push(fromId);
-  const from = store.users.find(u => u.id === fromId);
-  if (from && !from.friends.includes(currentUser.id)) from.friends.push(currentUser.id);
-  currentUser.friendRequests = currentUser.friendRequests.filter(x => x !== fromId);
-  if (from) from.sentRequests = from.sentRequests.filter(x => x !== currentUser.id);
-  addNotification(fromId, `${currentUser.name} ${translations[currentLang].friendAdded}`);
-  await saveDataToMega();
-  renderMyProfile(); renderUsersList(); renderRequests(); renderChatContacts(); renderNotifications();
-  alert(translations[currentLang].friendAdded);
+  showLoading();
+  try {
+    if (!currentUser.friendRequests.includes(fromId)) return;
+    if (!currentUser.friends.includes(fromId)) currentUser.friends.push(fromId);
+    const from = store.users.find(u => u.id === fromId);
+    if (from && !from.friends.includes(currentUser.id)) from.friends.push(currentUser.id);
+    currentUser.friendRequests = currentUser.friendRequests.filter(x => x !== fromId);
+    if (from) from.sentRequests = from.sentRequests.filter(x => x !== currentUser.id);
+    addNotification(fromId, `${currentUser.name} ${translations[currentLang].friendAdded}`);
+    await saveDataToMega();
+    renderMyProfile(); renderUsersList(); renderRequests(); renderChatContacts(); renderNotifications();
+    showSuccess('profileError', translations[currentLang].friendAdded);
+    hideLoading();
+  } catch (err) {
+    console.error('Accept friend error:', err);
+    showError('profileError', translations[currentLang].genericError);
+    hideLoading();
+  }
 }
 
 async function declineFriend(fromId) {
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('profileError', translations[currentLang].genericError);
     return;
   }
-  currentUser.friendRequests = currentUser.friendRequests.filter(x => x !== fromId);
-  const from = store.users.find(u => u.id === fromId);
-  if (from) from.sentRequests = from.sentRequests.filter(x => x !== currentUser.id);
-  await saveDataToMega();
-  renderRequests(); renderNotifications();
-  alert(translations[currentLang].requestDeclined);
+  showLoading();
+  try {
+    currentUser.friendRequests = currentUser.friendRequests.filter(x => x !== fromId);
+    const from = store.users.find(u => u.id === fromId);
+    if (from) from.sentRequests = from.sentRequests.filter(x => x !== currentUser.id);
+    await saveDataToMega();
+    renderRequests(); renderNotifications();
+    showSuccess('profileError', translations[currentLang].requestDeclined);
+    hideLoading();
+  } catch (err) {
+    console.error('Decline friend error:', err);
+    showError('profileError', translations[currentLang].genericError);
+    hideLoading();
+  }
 }
 
 async function unfriend(uid) {
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('profileError', translations[currentLang].genericError);
     return;
   }
-  currentUser.friends = currentUser.friends.filter(x => x !== uid);
-  const other = store.users.find(u => u.id === uid);
-  if (other) other.friends = other.friends.filter(x => x !== currentUser.id);
-  await saveDataToMega();
-  renderMyProfile(); renderUsersList(); renderChatContacts(); renderNotifications();
-  alert(translations[currentLang].unfriended);
+  showLoading();
+  try {
+    currentUser.friends = currentUser.friends.filter(x => x !== uid);
+    const other = store.users.find(u => u.id === uid);
+    if (other) other.friends = other.friends.filter(x => x !== currentUser.id);
+    await saveDataToMega();
+    renderMyProfile(); renderUsersList(); renderChatContacts(); renderNotifications();
+    showSuccess('profileError', translations[currentLang].unfriended);
+    hideLoading();
+  } catch (err) {
+    console.error('Unfriend error:', err);
+    showError('profileError', translations[currentLang].genericError);
+    hideLoading();
+  }
 }
 
 function viewGallery(uid) {
@@ -932,12 +964,16 @@ function viewGallery(uid) {
 ---------------------------*/
 async function addNotification(userId, message) {
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    console.error('Cannot add notification: MEGA storage not initialized');
     return;
   }
-  if (!store.notifications[userId]) store.notifications[userId] = [];
-  store.notifications[userId].push({ id: uid('n'), message, time: Date.now() });
-  await saveDataToMega();
+  try {
+    if (!store.notifications[userId]) store.notifications[userId] = [];
+    store.notifications[userId].push({ id: uid('n'), message, time: Date.now() });
+    await saveDataToMega();
+  } catch (err) {
+    console.error('Add notification error:', err);
+  }
 }
 
 function renderNotifications() {
@@ -1048,49 +1084,73 @@ function summarizeReacts(reactions) {
 
 async function toggleReact(postId, reactType) {
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('postError', translations[currentLang].genericError);
     return;
   }
-  const post = store.posts.find(p => p.id === postId);
-  if (!post) return;
-  const prev = post.reactions[currentUser.id];
-  if (prev === reactType) delete post.reactions[currentUser.id];
-  else post.reactions[currentUser.id] = reactType;
-  await saveDataToMega();
-  renderFeed();
+  showLoading();
+  try {
+    const post = store.posts.find(p => p.id === postId);
+    if (!post) return;
+    const prev = post.reactions[currentUser.id];
+    if (prev === reactType) delete post.reactions[currentUser.id];
+    else post.reactions[currentUser.id] = reactType;
+    await saveDataToMega();
+    renderFeed();
+    hideLoading();
+  } catch (err) {
+    console.error('Toggle react error:', err);
+    showError('postError', translations[currentLang].genericError);
+    hideLoading();
+  }
 }
 
 async function addComment(postId) {
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('postError', translations[currentLang].genericError);
     return;
   }
-  const inp = document.getElementById('commentInput-' + postId);
-  const text = sanitizeInput(inp.value.trim());
-  if (!text) return;
-  const post = store.posts.find(p => p.id === postId);
-  if (!post) { alert(translations[currentLang].postNotFound); return; }
-  const comment = { id: uid('c'), userId: currentUser.id, text, replies: [] };
-  post.comments.push(comment);
-  await saveDataToMega();
-  renderFeed();
+  showLoading();
+  try {
+    const inp = document.getElementById('commentInput-' + postId);
+    const text = sanitizeInput(inp.value.trim());
+    if (!text) return;
+    const post = store.posts.find(p => p.id === postId);
+    if (!post) { showError('postError', translations[currentLang].postNotFound); return; }
+    const comment = { id: uid('c'), userId: currentUser.id, text, replies: [] };
+    post.comments.push(comment);
+    await saveDataToMega();
+    renderFeed();
+    hideLoading();
+  } catch (err) {
+    console.error('Add comment error:', err);
+    showError('postError', translations[currentLang].genericError);
+    hideLoading();
+  }
 }
 
 async function replyToComment(postId, commentId) {
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('postError', translations[currentLang].genericError);
     return;
   }
-  const inp = document.getElementById(`replyInput-${postId}-${commentId}`);
-  const text = sanitizeInput(inp.value.trim());
-  if (!text) return;
-  const post = store.posts.find(p => p.id === postId);
-  if (!post) return;
-  const comment = post.comments.find(c => c.id === commentId);
-  if (!comment) return;
-  comment.replies.push({ id: uid('r'), userId: currentUser.id, text });
-  await saveDataToMega();
-  renderFeed();
+  showLoading();
+  try {
+    const inp = document.getElementById(`replyInput-${postId}-${commentId}`);
+    const text = sanitizeInput(inp.value.trim());
+    if (!text) return;
+    const post = store.posts.find(p => p.id === postId);
+    if (!post) return;
+    const comment = post.comments.find(c => c.id === commentId);
+    if (!comment) return;
+    comment.replies.push({ id: uid('r'), userId: currentUser.id, text });
+    await saveDataToMega();
+    renderFeed();
+    hideLoading();
+  } catch (err) {
+    console.error('Reply to comment error:', err);
+    showError('postError', translations[currentLang].genericError);
+    hideLoading();
+  }
 }
 
 function focusCommentBox(postId) {
@@ -1131,19 +1191,27 @@ function openChatWith(uid) {
 
 async function sendChat() {
   if (!megaStorage) {
-    alert(translations[currentLang].storageNotInitialized);
+    showError('chatError', translations[currentLang].genericError);
     return;
   }
-  const txt = sanitizeInput(document.getElementById('chatMsg').value.trim());
-  if (!txt) return;
-  const to = document.getElementById('chatWindow').dataset.with;
-  if (!to) return alert(translations[currentLang].selectFriend);
-  const id = chatId(currentUser.id, to);
-  if (!store.chats[id]) store.chats[id] = [];
-  store.chats[id].push({ from: currentUser.id, to, text: txt, t: Date.now() });
-  await saveDataToMega();
-  document.getElementById('chatMsg').value = '';
-  openChatWith(to);
+  showLoading();
+  try {
+    const txt = sanitizeInput(document.getElementById('chatMsg').value.trim());
+    if (!txt) return;
+    const to = document.getElementById('chatWindow').dataset.with;
+    if (!to) return showError('chatError', translations[currentLang].selectFriend);
+    const id = chatId(currentUser.id, to);
+    if (!store.chats[id]) store.chats[id] = [];
+    store.chats[id].push({ from: currentUser.id, to, text: txt, t: Date.now() });
+    await saveDataToMega();
+    document.getElementById('chatMsg').value = '';
+    openChatWith(to);
+    hideLoading();
+  } catch (err) {
+    console.error('Send chat error:', err);
+    showError('chatError', translations[currentLang].genericError);
+    hideLoading();
+  }
 }
 
 /* ---------------------------
@@ -1202,7 +1270,7 @@ const translations = {
     saved: 'সংরক্ষিত',
     notSet: 'নির্ধারিত নয়',
     uploadFailed: 'আপলোড ব্যর্থ হয়েছে',
-    storageNotInitialized: 'স্টোরেজ প্রস্তুত নয়। আবার চেষ্টা করুন।',
+    genericError: 'কিছু ভুল হয়েছে। আবার চেষ্টা করুন।',
     profilePicUploaded: 'প্রোফাইল ছবি আপলোড সফল',
     galleryUploaded: 'গ্যালারি ছবি আপলোড সফল',
     postCreated: 'পোস্ট তৈরি সফল'
@@ -1258,7 +1326,7 @@ const translations = {
     saved: 'Saved',
     notSet: 'Not set',
     uploadFailed: 'Upload failed',
-    storageNotInitialized: 'Storage not initialized. Please try again.',
+    genericError: 'Something went wrong. Please try again.',
     profilePicUploaded: 'Profile picture uploaded successfully',
     galleryUploaded: 'Gallery images uploaded successfully',
     postCreated: 'Post created successfully'
@@ -1329,7 +1397,7 @@ function logout() {
     if (e.key === 'Enter') resetPassword();
   });
 
-  // Initialize MEGA storage automatically
+  // Initialize MEGA storage automatically in the background
   await connectMega();
 })();
 </script>
