@@ -8,6 +8,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   <!-- Add Font Awesome for icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Add Cloudinary Upload Widget JS -->
+  <script src="https://upload-widget.cloudinary.com/latest/global/all.js" type="text/javascript"></script>
   <style>
     :root{--primary:#ff4d6d;--muted:#777}
     body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f4f6f8;color:#222}
@@ -176,7 +178,7 @@
           <option value="other">Other</option>
         </select>
         <input id="meOccupationInput" placeholder="Occupation" aria-label="Occupation">
-        <input id="mePicInput" type="file" accept="image/*" onchange="updateMyPic(this)" aria-label="Profile picture">
+        <button onclick="openCloudinaryUpload('profile')" class="btn-outline" aria-label="Upload profile picture">Upload Profile Pic</button>
         <div class="row">
           <button onclick="saveMe()" aria-label="Save profile">Save</button>
           <button onclick="toggleEditMe()" class="btn-outline" aria-label="Cancel edit">Cancel</button>
@@ -185,7 +187,7 @@
 
       <hr>
       <h4>Gallery</h4>
-      <input id="meAddPics" type="file" accept="image/*" multiple onchange="addMyGallery(this)" aria-label="Add gallery images">
+      <button onclick="openCloudinaryUpload('gallery')" aria-label="Add gallery images">Add Gallery Images</button>
       <div class="gallery" id="meGallery"></div>
 
       <hr>
@@ -231,7 +233,7 @@
       <h3>Newsfeed</h3>
       <div class="card">
         <textarea id="newPostText" placeholder="What's on your mind?" aria-label="Write a post"></textarea>
-        <input id="newPostImages" type="file" accept="image/*" multiple onchange="previewPostImages(this)" aria-label="Add post images">
+        <button onclick="openCloudinaryUpload('post')" aria-label="Add post images">Upload Post Images</button>
         <div id="postPreview" class="gallery"></div>
         <div class="row">
           <button onclick="createPost()" aria-label="Create post">Post</button>
@@ -257,7 +259,7 @@
     </section>
   </div>
 
-  <footer>Prototype — data stored in your browser (localStorage)</footer>
+  <footer>Prototype — data stored in your browser (localStorage) with Cloudinary uploads</footer>
 
 <script>
 /* ---------------------------
@@ -298,39 +300,107 @@ function persist(){
 }
 
 /* ---------------------------
+  Cloudinary Upload
+---------------------------*/
+const CLOUDINARY_CLOUD_NAME = 'ddnswi7ge';
+const CLOUDINARY_UPLOAD_PRESET = 'matrimony';
+let pendingUploads = []; // Array to store pending image URLs for current operation
+
+function openCloudinaryUpload(type) {
+  if (!currentUser) {
+    alert(translations[currentLang].loginFirst);
+    return;
+  }
+  pendingUploads = [];
+  const options = {
+    cloudName: CLOUDINARY_CLOUD_NAME,
+    uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+    sources: ['local', 'url', 'camera'],
+    multiple: type === 'gallery' || type === 'post',
+    maxFiles: type === 'profile' ? 1 : 10,
+    cropping: true,
+    croppingAspectRatio: type === 'profile' ? 1 : null,
+    showAdvancedOptions: false,
+    showCrop: type === 'profile',
+    showUploadMoreButton: true,
+    maxFileSize: 10000000, // 10MB
+    resourceType: 'image'
+  };
+
+  const myWidget = window.cloudinary.createUploadWidget(
+    options,
+    (error, result) => {
+      if (!error && result && result.event === "success") {
+        const url = result.info.secure_url;
+        pendingUploads.push(url);
+        // Auto-close widget after upload if single file
+        if (type === 'profile' && pendingUploads.length >= 1) {
+          handleUploadComplete(type, pendingUploads);
+        }
+      } else if (error) {
+        console.error('Upload error:', error);
+        alert('Upload failed: ' + error.message);
+      }
+    }
+  );
+
+  myWidget.open();
+  
+  // Listen for close event to handle multiple uploads
+  myWidget.on('close', () => {
+    if (pendingUploads.length > 0) {
+      handleUploadComplete(type, pendingUploads);
+    }
+  });
+}
+
+function handleUploadComplete(type, urls) {
+  if (type === 'profile') {
+    const url = urls[0];
+    const oldPic = currentUser.pic;
+    currentUser.pic = url;
+    if (oldPic !== url) {
+      const post = {
+        id: uid('p'),
+        userId: currentUser.id,
+        text: `${currentUser.name} ${translations[currentLang].updatedProfilePic}`,
+        images: [url],
+        reactions: {},
+        comments: []
+      };
+      store.posts.unshift(post);
+    }
+    persist();
+    renderMyProfile();
+    renderFeed();
+    toggleEditMe();
+    alert(translations[currentLang].saved);
+  } else if (type === 'gallery') {
+    currentUser.gallery = currentUser.gallery.concat(urls);
+    persist();
+    renderMyProfile();
+  } else if (type === 'post') {
+    // Preview the uploaded images
+    const preview = document.getElementById('postPreview');
+    preview.innerHTML = '';
+    urls.forEach(url => {
+      const img = document.createElement('img');
+      img.src = url;
+      img.onclick = () => openImageViewer(url);
+      preview.appendChild(img);
+    });
+    // Store for post creation
+    window.pendingPostImages = urls;
+  }
+}
+
+/* ---------------------------
   Helpers
 ---------------------------*/
 function showLoading() { document.getElementById('loading').style.display = 'block'; }
 function hideLoading() { document.getElementById('loading').style.display = 'none'; }
 function sanitizeInput(str) { return String(str).replace(/[<>]/g, ''); }
 function hashPassword(password) { return CryptoJS.SHA256(password).toString(); }
-function compressImage(file, callback, maxDim=200) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let { width, height } = img;
-      if (width > height) {
-        if (width > maxDim) {
-          height *= maxDim / width;
-          width = maxDim;
-        }
-      } else {
-        if (height > maxDim) {
-          width *= maxDim / height;
-          height = maxDim;
-        }
-      }
-      canvas.width = width;
-      canvas.height = height;
-      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-      canvas.toBlob(callback, 'image/jpeg', 0.7);
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
 
 /* ---------------------------
   Image Viewer
@@ -541,6 +611,7 @@ function renderMyProfile(){
   document.getElementById('meGender').textContent = currentUser.gender || translations[currentLang].notSet;
   document.getElementById('meOccupation').textContent = currentUser.occupation || translations[currentLang].notSet;
   document.getElementById('mePic').src = currentUser.pic || DEFAULT_IMAGE;
+  document.getElementById('mePic').onclick = () => currentUser.pic && openImageViewer(currentUser.pic);
   document.getElementById('meGallery').innerHTML = '';
   currentUser.gallery.forEach(src=>{
     const img = document.createElement('img');
@@ -553,8 +624,9 @@ function renderMyProfile(){
     const u = store.users.find(x=>x.id===fid);
     if(u){
       const el = document.createElement('div'); el.className='friend-pill';
-      el.innerHTML = `<img src="${u.pic||DEFAULT_IMAGE}" style="width:36px;height:36px;border-radius:6px;object-fit:cover" onclick="openImageViewer('${u.pic}')"/><div><strong style="font-size:13px">${u.name}</strong><div class="small">${u.location||''}</div></div>`;
-      el.onclick = () => openProfile(u.id);
+      const picOnclick = u.pic ? `onclick="openImageViewer('${u.pic}')"` : '';
+      el.innerHTML = `<img src="${u.pic||DEFAULT_IMAGE}" style="width:36px;height:36px;border-radius:6px;object-fit:cover" ${picOnclick}/><div><strong style="font-size:13px">${u.name}</strong><div class="small">${u.location||''}</div></div>`;
+      el.onclick = (e) => { e.stopPropagation(); openProfile(u.id); };
       fdiv.appendChild(el);
     }
   });
@@ -587,38 +659,6 @@ function saveMe(){
   }, 500);
 }
 
-function updateMyPic(inp){
-  const file = inp.files[0];
-  if(!file) return;
-  compressImage(file, (blob) => {
-    const oldPic = currentUser.pic;
-    currentUser.pic = URL.createObjectURL(blob);
-    if(oldPic !== currentUser.pic && currentUser.pic){
-      const post = {
-        id: uid('p'),
-        userId: currentUser.id,
-        text: `${currentUser.name} ${translations[currentLang].updatedProfilePic}`,
-        images: [currentUser.pic],
-        reactions: {},
-        comments: []
-      };
-      store.posts.unshift(post);
-    }
-    persist();
-    renderMyProfile();
-    renderFeed();
-  });
-}
-
-function addMyGallery(inp){
-  const files = Array.from(inp.files||[]);
-  files.forEach(f=> compressImage(f, (blob) => {
-    currentUser.gallery.push(URL.createObjectURL(blob));
-    persist();
-    renderMyProfile();
-  }));
-}
-
 /* ---------------------------
   Browse users & profiles
 ---------------------------*/
@@ -626,7 +666,8 @@ function renderUsersList(){
   const list = document.getElementById('usersList'); list.innerHTML='';
   store.users.filter(u=>u.id!==currentUser.id).forEach(u=>{
     const el = document.createElement('div'); el.className='friend-pill';
-    el.innerHTML = `<img src="${u.pic||DEFAULT_IMAGE}" style="width:48px;height:48px;border-radius:8px;object-fit:cover" onclick="openImageViewer('${u.pic}')"/><div style="min-width:140px"><strong>${u.name}</strong><div class="small">${u.location||''}</div><div class="small">${u.age ? u.age+' years' : ''} ${u.gender||''}</div></div>`;
+    const picOnclick = u.pic ? `onclick="openImageViewer('${u.pic}')"` : '';
+    el.innerHTML = `<img src="${u.pic||DEFAULT_IMAGE}" style="width:48px;height:48px;border-radius:8px;object-fit:cover" ${picOnclick}/><div style="min-width:140px"><strong>${u.name}</strong><div class="small">${u.location||''}</div><div class="small">${u.age ? u.age+' years' : ''} ${u.gender||''}</div></div>`;
     const btns = document.createElement('div'); btns.style.marginLeft='auto';
     const isFriend = currentUser.friends.includes(u.id);
     const sent = currentUser.sentRequests.includes(u.id);
@@ -650,7 +691,8 @@ function filterUsers(){
     .filter(u => u.id !== currentUser.id && (!name || u.name.toLowerCase().includes(name)) && (!gender || u.gender === gender))
     .forEach(u => {
       const el = document.createElement('div'); el.className='friend-pill';
-      el.innerHTML = `<img src="${u.pic||DEFAULT_IMAGE}" style="width:48px;height:48px;border-radius:8px;object-fit:cover" onclick="openImageViewer('${u.pic}')"/><div style="min-width:140px"><strong>${u.name}</strong><div class="small">${u.location||''}</div><div class="small">${u.age ? u.age+' years' : ''} ${u.gender||''}</div></div>`;
+      const picOnclick = u.pic ? `onclick="openImageViewer('${u.pic}')"` : '';
+      el.innerHTML = `<img src="${u.pic||DEFAULT_IMAGE}" style="width:48px;height:48px;border-radius:8px;object-fit:cover" ${picOnclick}/><div style="min-width:140px"><strong>${u.name}</strong><div class="small">${u.location||''}</div><div class="small">${u.age ? u.age+' years' : ''} ${u.gender||''}</div></div>`;
       const btns = document.createElement('div'); btns.style.marginLeft='auto';
       const isFriend = currentUser.friends.includes(u.id);
       const sent = currentUser.sentRequests.includes(u.id);
@@ -672,9 +714,10 @@ function openProfile(uid){
   container.classList.remove('hidden');
   container.innerHTML = '';
   const html = document.createElement('div');
+  const picOnclick = u.pic ? `onclick="openImageViewer('${u.pic}')"` : '';
   html.innerHTML = `
     <div style="display:flex;gap:10px;align-items:center">
-      <img src="${u.pic||DEFAULT_IMAGE}" class="profile-thumb" alt="${u.name}'s profile picture" onclick="openImageViewer('${u.pic}')"/>
+      <img src="${u.pic||DEFAULT_IMAGE}" class="profile-thumb" alt="${u.name}'s profile picture" ${picOnclick}/>
       <div><h3>${u.name}</h3><div class="small">${u.email}</div><div class="small">${u.location||translations[currentLang].notSet}</div><div class="small">${u.age ? u.age+' years' : translations[currentLang].notSet} ${u.gender||''}</div><div class="small">${u.occupation||translations[currentLang].notSet}</div></div>
     </div>
     <div style="margin-top:8px">
@@ -702,7 +745,9 @@ function openProfile(uid){
   u.friends.forEach(fid=>{
     const fu = store.users.find(x=>x.id===fid);
     if(fu){
-      const fEl = document.createElement('div'); fEl.className='friend-pill'; fEl.innerHTML=`<img src="${fu.pic||DEFAULT_IMAGE}" style="width:36px;height:36px;border-radius:6px" alt="${fu.name}'s picture" onclick="openImageViewer('${fu.pic}')"/><div><strong>${fu.name}</strong></div>`; fl.appendChild(fEl);
+      const fEl = document.createElement('div'); fEl.className='friend-pill';
+      const fuPicOnclick = fu.pic ? `onclick="openImageViewer('${fu.pic}')"` : '';
+      fEl.innerHTML=`<img src="${fu.pic||DEFAULT_IMAGE}" style="width:36px;height:36px;border-radius:6px" alt="${fu.name}'s picture" ${fuPicOnclick}/><div><strong>${fu.name}</strong></div>`; fl.appendChild(fEl);
     }
   });
   container.scrollIntoView({behavior:'smooth'});
@@ -822,38 +867,21 @@ const REACTS = {
   danger: '⚠️'
 };
 
-function previewPostImages(inp){
-  const files = Array.from(inp.files||[]);
-  const preview = document.getElementById('postPreview');
-  preview.innerHTML = '';
-  files.forEach(f=> compressImage(f, (blob) => {
-    const img = document.createElement('img'); img.src = URL.createObjectURL(blob);
-    img.onclick = () => openImageViewer(img.src);
-    preview.appendChild(img);
-  }));
-}
-
 function createPost(){
   if(!currentUser) return alert(translations[currentLang].loginFirst);
   const text = sanitizeInput(document.getElementById('newPostText').value.trim());
-  const files = document.getElementById('newPostImages').files;
-  const images = [];
-  const done = () => {
-    const post = { id: uid('p'), userId: currentUser.id, text, images, reactions: {}, comments: [] };
-    store.posts.unshift(post);
-    persist(); renderFeed(); clearPost();
-  };
-  if(files.length === 0) return done();
-  Array.from(files).forEach(f => compressImage(f, (blob) => {
-    images.push(URL.createObjectURL(blob));
-    if(images.length === files.length) done();
-  }));
+  const images = window.pendingPostImages || [];
+  const post = { id: uid('p'), userId: currentUser.id, text, images, reactions: {}, comments: [] };
+  store.posts.unshift(post);
+  persist(); 
+  renderFeed(); 
+  clearPost();
 }
 
 function clearPost(){
   document.getElementById('newPostText').value='';
-  document.getElementById('newPostImages').value='';
   document.getElementById('postPreview').innerHTML='';
+  window.pendingPostImages = [];
 }
 
 function renderFeed(){
@@ -861,7 +889,8 @@ function renderFeed(){
   store.posts.forEach(p=>{
     const user = store.users.find(u=>u.id===p.userId) || {};
     const card = document.createElement('div'); card.className='card';
-    let html = `<div style="display:flex;gap:8px;align-items:center"><img src="${user.pic||DEFAULT_IMAGE}" style="width:44px;height:44px;border-radius:8px;object-fit:cover" alt="${user.name}'s picture" onclick="openImageViewer('${user.pic}')"/><div><strong>${user.name||'Unknown'}</strong><div class="small">${user.location||''}</div></div></div>`;
+    const picOnclick = user.pic ? `onclick="openImageViewer('${user.pic}')"` : '';
+    let html = `<div style="display:flex;gap:8px;align-items:center"><img src="${user.pic||DEFAULT_IMAGE}" style="width:44px;height:44px;border-radius:8px;object-fit:cover" alt="${user.name}'s picture" ${picOnclick}/><div><strong>${user.name||'Unknown'}</strong><div class="small">${user.location||''}</div></div></div>`;
     html += `<p style="margin-top:8px">${escapeHtml(p.text||'')}</p>`;
     if(p.images && p.images.length){
       html += `<div class="gallery">${p.images.map(i=>`<img src="${i}" alt="Post image" onclick="openImageViewer('${i}')">`).join('')}</div>`;
@@ -994,8 +1023,9 @@ function renderChatContacts(){
     const fu = store.users.find(u=>u.id===fid);
     if(fu){
       const el = document.createElement('div'); el.className='friend-pill'; el.style.cursor='pointer';
-      el.innerHTML = `<img src="${fu.pic||DEFAULT_IMAGE}" style="width:36px;height:36px;border-radius:6px;object-fit:cover" alt="${fu.name}'s picture" onclick="openImageViewer('${fu.pic}')"/><div><strong>${fu.name}</strong></div>`;
-      el.onclick = () => openChatWith(fid);
+      const picOnclick = fu.pic ? `onclick="openImageViewer('${fu.pic}')"` : '';
+      el.innerHTML = `<img src="${fu.pic||DEFAULT_IMAGE}" style="width:36px;height:36px;border-radius:6px;object-fit:cover" alt="${fu.name}'s picture" ${picOnclick}/><div><strong>${fu.name}</strong></div>`;
+      el.onclick = (e) => { e.stopPropagation(); openChatWith(fid); };
       cont.appendChild(el);
     }
   });
