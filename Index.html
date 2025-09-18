@@ -2,10 +2,12 @@
 <html lang="bn">
 <head>
   <meta charset="utf-8" />
-  <title>Matrimonial - Social Prototype with Local Storage</title>
+  <title>Matrimonial - Social Prototype</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- CryptoJS for password hashing -->
+  <!-- Add CryptoJS for password hashing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <!-- Add Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root{--primary:#ff4d6d;--muted:#777}
     body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f4f6f8;color:#222}
@@ -13,8 +15,8 @@
     header h1{margin:0;font-size:18px}
     header .right{display:flex;gap:8px;align-items:center}
     nav{background:#fff;padding:6px;display:flex;gap:6px;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.06);display:none}
-    nav button{background:var(--primary);color:#fff;border:0;padding:8px;border-radius:50%;font-size:16px;cursor:pointer;width:40px;height:40px;position:relative}
-    nav button:hover::after{content:attr(data-tooltip);position:absolute;top:-30px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;white-space:nowrap}
+    nav button{background:var(--primary);color:#fff;border:0;padding:6px;border-radius:50%;font-size:13px;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center}
+    nav button i{font-size:16px}
     .container{padding:12px;max-width:980px;margin:14px auto}
     section{display:none}
     .card{background:#fff;padding:12px;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.04);margin-bottom:12px}
@@ -23,7 +25,7 @@
     .col{flex:1}
     img.profile-thumb{width:80px;height:80px;border-radius:50%;object-fit:cover}
     .small{font-size:13px;color:var(--muted)}
-    .gallery img{width:80px;height:80px;object-fit:cover;border-radius:8px;margin:4px;loading:lazy}
+    .gallery img{width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin:4px;cursor:pointer;loading:lazy}
     .post-actions{display:flex;gap:8px;align-items:center;margin-top:8px}
     .react-btn{background:#fafafa;border:1px solid #eee;padding:6px;border-radius:6px;cursor:pointer}
     .comment{background:#fbfbfb;padding:8px;border-radius:8px;margin-top:6px}
@@ -38,17 +40,26 @@
     .success-message{color:#2e7d32;font-size:13px;margin:4px 0;padding:6px;border-radius:4px;background:#e8f5e9;display:none}
     .password-toggle{cursor:pointer;color:var(--primary);font-size:12px;margin-top:2px}
     #loading{background:#fff;padding:10px;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,.04);text-align:center;display:none}
-    .post-card{background:#fff;padding:16px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);margin:12px 0;width:100%;max-width:100%;box-sizing:border-box}
-    .post-card img{max-width:100%;height:auto;border-radius:8px}
     footer{padding:12px;text-align:center;color:var(--muted);font-size:13px}
+    
+    /* Full-screen image viewer */
+    #imageViewer{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:none;justify-content:center;align-items:center;z-index:1000}
+    #imageViewer img{max-width:90%;max-height:90%;object-fit:contain}
+    #imageViewer .controls{position:absolute;bottom:20px;display:flex;gap:10px}
+    #imageViewer button{background:#fff;border:none;padding:8px;border-radius:50%;cursor:pointer}
+    
+    /* Full-screen chat */
+    #chatPanel.fullscreen{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1000;background:#f4f6f8;margin:0}
+    #chatPanel.fullscreen .card{height:calc(100% - 60px);display:flex;flex-direction:column}
+    #chatPanel.fullscreen #chatMessages{flex:1;overflow:auto}
+    
     @media(max-width:600px){
       header h1{font-size:16px}
       nav{overflow:auto;padding:8px}
       .row{flex-direction:column}
       .card{padding:10px}
       .profile-thumb{width:60px;height:60px}
-      nav button{width:36px;height:36px;font-size:14px}
-      .post-card{padding:12px}
+      .gallery img{max-height:100vh;object-fit:cover}
     }
   </style>
 </head>
@@ -68,19 +79,27 @@
   </header>
 
   <nav id="mainNav">
-    <button id="navProfile" onclick="showSection('profilePanel')" data-tooltip="প্রোফাইল" aria-label="Profile">👤</button>
-    <button id="navBrowse" onclick="showSection('browsePanel')" data-tooltip="ব্যবহারকারী" aria-label="Users">👥</button>
-    <button id="navRequests" onclick="showSection('requestsPanel')" data-tooltip="রিকোয়েস্ট" aria-label="Requests">🤝</button>
-    <button id="navFeed" onclick="showSection('feedPanel')" data-tooltip="নিউজফিড" aria-label="Feed">📰</button>
-    <button id="navChat" onclick="showSection('chatPanel')" data-tooltip="চ্যাট" aria-label="Chat">💬</button>
-    <button id="navNotifications" onclick="showSection('notificationsPanel')" data-tooltip="নোটিফিকেশন" aria-label="Notifications">🔔</button>
-    <button id="navAdmin" onclick="showSection('adminPanel')" data-tooltip="অ্যাডমিন" aria-label="Admin" style="display:none">🔧</button>
-    <button id="navLogout" onclick="logout()" data-tooltip="লগআউট" aria-label="Logout">🚪</button>
+    <button id="navProfile" onclick="showSection('profilePanel')" title="প্রোফাইল"><i class="fas fa-user"></i></button>
+    <button id="navBrowse" onclick="showSection('browsePanel')" title="ব্যবহারকারী"><i class="fas fa-users"></i></button>
+    <button id="navRequests" onclick="showSection('requestsPanel')" title="রিকোয়েস্ট"><i class="fas fa-handshake"></i></button>
+    <button id="navFeed" onclick="showSection('feedPanel')" title="নিউজফিড"><i class="fas fa-newspaper"></i></button>
+    <button id="navChat" onclick="showSection('chatPanel')" title="চ্যাট"><i class="fas fa-comments"></i></button>
+    <button id="navNotifications" onclick="showSection('notificationsPanel')" title="নোটিফিকেশন"><i class="fas fa-bell"></i></button>
+    <button id="navLogout" onclick="logout()" title="লগআউট"><i class="fas fa-sign-out-alt"></i></button>
   </nav>
 
   <div class="container">
     <!-- Loading Indicator -->
     <div id="loading">Loading...</div>
+
+    <!-- Image Viewer -->
+    <div id="imageViewer">
+      <img id="viewerImage" src="" alt="Full-screen image">
+      <div class="controls">
+        <button onclick="closeImageViewer()" title="Close"><i class="fas fa-times"></i></button>
+        <button onclick="downloadImage()" title="Download"><i class="fas fa-download"></i></button>
+      </div>
+    </div>
 
     <!-- AUTH: LOGIN -->
     <section id="loginPanel" class="card" style="display:block">
@@ -93,7 +112,7 @@
         <span class="password-toggle" onclick="togglePassword('loginPass', this)">দেখান</span>
       </div>
       <div class="row">
-        <button id="loginButton" onclick="doLogin()" style="flex:1" aria-label="Login to your account">লগইন</button>
+        <button onclick="doLogin()" style="flex:1" aria-label="Login to your account">লগইন</button>
         <button onclick="showSection('signupPanel')" class="btn-outline" style="flex:1" aria-label="Go to signup">সাইনআপ</button>
       </div>
       <p class="small center"><a href="#" onclick="showSection('forgotPanel')">পাসওয়ার্ড ভুলে গেছেন?</a></p>
@@ -130,15 +149,6 @@
       </div>
     </section>
 
-    <!-- ADMIN PANEL -->
-    <section id="adminPanel" class="card">
-      <h2>অ্যাডমিন প্যানেল</h2>
-      <div id="adminError" class="error-message"></div>
-      <div id="adminSuccess" class="success-message"></div>
-      <h3>ইউজার লিস্ট</h3>
-      <div id="userList"></div>
-    </section>
-
     <!-- PROFILE -->
     <section id="profilePanel" class="card">
       <div style="display:flex;gap:12px;align-items:center">
@@ -150,19 +160,16 @@
           <div class="small" id="meAge"></div>
           <div class="small" id="meGender"></div>
           <div class="small" id="meOccupation"></div>
-          <div class="small" id="meFriendsCount"></div>
         </div>
         <div style="margin-left:auto">
           <button onclick="toggleEditMe()" id="btnEditMe" class="btn-outline" aria-label="Edit profile">Edit</button>
-          <button onclick="deleteMyData()" class="btn-outline" style="background:#d32f2f;color:#fff;border:none" aria-label="Delete my data">ডাটা ডিলিট</button>
         </div>
       </div>
-      <div id="profileError" class="error-message"></div>
-      <div id="profileSuccess" class="success-message"></div>
+
       <div id="meEdit" class="hidden" style="margin-top:10px">
         <input id="meNameInput" placeholder="Name" aria-label="Name">
         <input id="meLocationInput" placeholder="Location" aria-label="Location">
-        <input id="meAgeInput" type="number" placeholder="Age" aria-label="Age">
+        <input id="meAgeInput" type="number" min="18" max="100" placeholder="Age" aria-label="Age">
         <select id="meGenderInput" aria-label="Gender">
           <option value="male">Male</option>
           <option value="female">Female</option>
@@ -175,11 +182,12 @@
           <button onclick="toggleEditMe()" class="btn-outline" aria-label="Cancel edit">Cancel</button>
         </div>
       </div>
+
       <hr>
       <h4>Gallery</h4>
-      <div id="galleryError" class="error-message"></div>
       <input id="meAddPics" type="file" accept="image/*" multiple onchange="addMyGallery(this)" aria-label="Add gallery images">
       <div class="gallery" id="meGallery"></div>
+
       <hr>
       <h4>Friends</h4>
       <div id="myFriends" class="friends-list"></div>
@@ -196,7 +204,7 @@
           <option value="female">Female</option>
           <option value="other">Other</option>
         </select>
-        <button onclick="filterUsers()" aria-label="Search users">Search</button>
+        <button onclick="filterUsers()">Search</button>
       </div>
       <div id="usersList" class="friends-list"></div>
       <hr>
@@ -223,7 +231,6 @@
       <h3>Newsfeed</h3>
       <div class="card">
         <textarea id="newPostText" placeholder="What's on your mind?" aria-label="Write a post"></textarea>
-        <div id="postError" class="error-message"></div>
         <input id="newPostImages" type="file" accept="image/*" multiple onchange="previewPostImages(this)" aria-label="Add post images">
         <div id="postPreview" class="gallery"></div>
         <div class="row">
@@ -236,7 +243,7 @@
 
     <!-- CHAT -->
     <section id="chatPanel" class="card">
-      <h3>Chat</h3>
+      <h3>Chat <button onclick="toggleChatFullscreen()" class="btn-outline" style="float:right">Toggle Fullscreen</button></h3>
       <div id="chatContacts" class="friends-list"></div>
       <hr>
       <div id="chatWindow" class="card hidden">
@@ -250,137 +257,139 @@
     </section>
   </div>
 
-  <footer>Prototype — all data stored locally</footer>
+  <footer>Prototype — data stored in your browser (localStorage)</footer>
 
 <script>
 /* ---------------------------
-  Data Model & Storage
+  Data model & persistence
 ---------------------------*/
-const ADMIN_EMAIL = 'your_admin_email@gmail.com'; // Replace with your admin email
-let currentUser = null;
+function uid(prefix='id'){ return prefix+Math.random().toString(36).slice(2,9) }
+
 let store = {
-  users: [],
-  posts: [],
-  chats: {},
-  notifications: {}
+  users: JSON.parse(localStorage.getItem('mm_users')||'null'),
+  posts: JSON.parse(localStorage.getItem('mm_posts')||'null'),
+  chats: JSON.parse(localStorage.getItem('mm_chats')||'null'),
+  notifications: JSON.parse(localStorage.getItem('mm_notifications')||'null')
 };
 
-function uid(prefix = 'id') { return prefix + Math.random().toString(36).slice(2, 9); }
+if(!store.users){
+  store.users = [
+    { id:'u1', name:'Sourav Dey', email:'sourav@example.com', pass:CryptoJS.SHA256('1234').toString(), location:'Dhaka', age:30, gender:'male', occupation:'Engineer', pic:'', gallery:[], friends:['u2'], friendRequests:[], sentRequests:[] },
+    { id:'u2', name:'Rahim', email:'rahim@example.com', pass:CryptoJS.SHA256('1234').toString(), location:'Chittagong', age:28, gender:'male', occupation:'Teacher', pic:'', gallery:[], friends:['u1'], friendRequests:[], sentRequests:[] },
+    { id:'u3', name:'Karim', email:'karim@example.com', pass:CryptoJS.SHA256('1234').toString(), location:'Sylhet', age:25, gender:'male', occupation:'Student', pic:'', gallery:[], friends:[], friendRequests:[], sentRequests:[] }
+  ];
+  store.posts = [
+    { id:'p1', userId:'u2', text:'Hello, joining here!', images:[], reactions:{}, comments:[] }
+  ];
+  store.chats = {};
+  store.notifications = {};
+  persist();
+} else {
+  store.posts = store.posts || [];
+  store.chats = store.chats || {};
+  store.notifications = store.notifications || {};
+}
+
+function persist(){
+  localStorage.setItem('mm_users', JSON.stringify(store.users));
+  localStorage.setItem('mm_posts', JSON.stringify(store.posts));
+  localStorage.setItem('mm_chats', JSON.stringify(store.chats));
+  localStorage.setItem('mm_notifications', JSON.stringify(store.notifications));
+}
+
+/* ---------------------------
+  Helpers
+---------------------------*/
 function showLoading() { document.getElementById('loading').style.display = 'block'; }
 function hideLoading() { document.getElementById('loading').style.display = 'none'; }
 function sanitizeInput(str) { return String(str).replace(/[<>]/g, ''); }
 function hashPassword(password) { return CryptoJS.SHA256(password).toString(); }
-function validateEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
-function escapeHtml(str = '') { return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s]); }
-
-async function saveDataToLocalStorage(userId) {
-  try {
-    localStorage.setItem(`matrimonial_${userId}`, JSON.stringify(store));
-    console.log(`Data saved to localStorage for user ${userId}`);
-  } catch (err) {
-    console.error('Error saving to localStorage:', err);
-    showError('profileError', translations[currentLang].genericError);
-  }
-}
-
-async function loadDataFromLocalStorage(userId) {
-  try {
-    const data = localStorage.getItem(`matrimonial_${userId}`);
-    if (data) {
-      store = JSON.parse(data);
-      console.log(`Data loaded from localStorage for user ${userId}`);
-    } else {
-      console.log(`No data found in localStorage for user ${userId}`);
-      initializeDefaultData(userId);
-    }
-  } catch (err) {
-    console.error('Error loading from localStorage:', err);
-    initializeDefaultData(userId);
-  }
-}
-
-function initializeDefaultData(userId) {
-  store = {
-    users: [{
-      id: userId,
-      name: currentUser.name,
-      email: currentUser.email,
-      pass: currentUser.pass,
-      location: '',
-      age: '',
-      gender: '',
-      occupation: '',
-      pic: '',
-      gallery: [],
-      friends: [],
-      friendRequests: [],
-      sentRequests: [],
-      status: 'active'
-    }],
-    posts: [],
-    chats: {},
-    notifications: {}
+function compressImage(file, callback, maxDim=200) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+      if (width > height) {
+        if (width > maxDim) {
+          height *= maxDim / width;
+          width = maxDim;
+        }
+      } else {
+        if (height > maxDim) {
+          width *= maxDim / height;
+          height = maxDim;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(callback, 'image/jpeg', 0.7);
+    };
+    img.src = e.target.result;
   };
-  console.log('Default data initialized:', store);
-}
-
-async function saveUserListToLocalStorage(userList) {
-  try {
-    localStorage.setItem('user_list', JSON.stringify(userList));
-    console.log('User list saved to localStorage');
-  } catch (err) {
-    console.error('Error saving user list to localStorage:', err);
-    showError('adminError', translations[currentLang].genericError);
-  }
-}
-
-async function loadUserListFromLocalStorage() {
-  try {
-    const localData = localStorage.getItem('user_list');
-    return localData ? JSON.parse(localData) : [];
-  } catch (err) {
-    console.error('Error loading user list from localStorage:', err);
-    return [];
-  }
+  reader.readAsDataURL(file);
 }
 
 /* ---------------------------
-  Auth & UI Helpers
+  Image Viewer
 ---------------------------*/
-function showSection(id) {
-  ['loginPanel', 'signupPanel', 'forgotPanel', 'profilePanel', 'browsePanel', 'requestsPanel', 'feedPanel', 'chatPanel', 'notificationsPanel', 'adminPanel'].forEach(s => {
-    document.getElementById(s).style.display = 'none';
-  });
-  ['loginError', 'signupError', 'forgotError', 'profileError', 'galleryError', 'postError', 'adminError'].forEach(e => {
-    document.getElementById(e).style.display = 'none';
-    document.getElementById(e).textContent = '';
-  });
-  document.getElementById(id).style.display = 'block';
-  if (id !== 'browsePanel') document.getElementById('viewProfile').classList.add('hidden');
-  try {
-    if (id === 'loginPanel') document.getElementById('loginEmail').focus();
-    else if (id === 'signupPanel') document.getElementById('regName').focus();
-    else if (id === 'forgotPanel') document.getElementById('forgotEmail').focus();
-  } catch (e) {
-    console.error('Focus error:', e);
-  }
+function openImageViewer(src) {
+  const viewer = document.getElementById('imageViewer');
+  document.getElementById('viewerImage').src = src;
+  viewer.style.display = 'flex';
+}
+function closeImageViewer() {
+  document.getElementById('imageViewer').style.display = 'none';
+}
+function downloadImage() {
+  const src = document.getElementById('viewerImage').src;
+  const a = document.createElement('a');
+  a.href = src;
+  a.download = 'image.jpg';
+  a.click();
 }
 
-function showError(elementId, message) {
+/* ---------------------------
+  Auth & UI helpers
+---------------------------*/
+let currentUser = null;
+
+function showSection(id){
+  ['loginPanel','signupPanel','forgotPanel','profilePanel','browsePanel','requestsPanel','feedPanel','chatPanel','notificationsPanel'].forEach(s=>{
+    document.getElementById(s).style.display='none';
+  });
+  ['loginError','signupError','forgotError','loginMessage'].forEach(e=>{
+    document.getElementById(e).style.display='none';
+    document.getElementById(e).textContent='';
+  });
+  document.getElementById(id).style.display='block';
+  if(id !== 'browsePanel') document.getElementById('viewProfile').classList.add('hidden');
+  if(id === 'chatPanel') document.getElementById('chatPanel').classList.add('fullscreen');
+  else document.getElementById('chatPanel').classList.remove('fullscreen');
+}
+
+function showError(elementId, message){
   const errorEl = document.getElementById(elementId);
   errorEl.textContent = message;
   errorEl.style.display = 'block';
 }
 
-function showSuccess(elementId, message) {
+function showSuccess(elementId, message){
   const successEl = document.getElementById(elementId);
   successEl.textContent = message;
   successEl.style.display = 'block';
 }
 
-function togglePassword(inputId, toggleEl) {
+function validateEmail(email){
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
+function togglePassword(inputId, toggleEl){
   const input = document.getElementById(inputId);
-  if (input.type === 'password') {
+  if(input.type === 'password'){
     input.type = 'text';
     toggleEl.textContent = translations[currentLang].hide;
   } else {
@@ -389,148 +398,114 @@ function togglePassword(inputId, toggleEl) {
   }
 }
 
-async function doSignup() {
+function doSignup(){
   showLoading();
-  try {
+  setTimeout(() => {
     const name = sanitizeInput(document.getElementById('regName').value.trim());
     const email = document.getElementById('regEmail').value.trim();
-    const pass = document.getElementById('regPass').value.trim();
+    const pass = document.getElementById('regPass').value;
 
-    if (!name || !email || !pass) {
+    if(!name || !email || !pass){
       showError('signupError', translations[currentLang].fillAllFields);
+      hideLoading();
       return;
     }
-    if (!validateEmail(email)) {
+    if(!validateEmail(email)){
       showError('signupError', translations[currentLang].invalidEmail);
+      hideLoading();
       return;
     }
-    if (pass.length < 6) {
+    if(pass.length < 6){
       showError('signupError', translations[currentLang].passwordTooShort);
+      hideLoading();
       return;
     }
-
-    let userList = await loadUserListFromLocalStorage();
-    if (userList.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+    if(store.users.some(u=>u.email===email)){
       showError('signupError', translations[currentLang].emailExists);
+      hideLoading();
       return;
     }
 
-    const userId = uid('u');
-    const newUser = {
-      id: userId,
-      name,
-      email,
-      pass: hashPassword(pass),
-      location: '',
-      age: '',
-      gender: '',
-      occupation: '',
-      pic: '',
-      gallery: [],
-      friends: [],
-      friendRequests: [],
-      sentRequests: [],
-      status: 'active'
-    };
-    userList.push({ id: userId, email, pass: hashPassword(pass), status: 'active' });
-    await saveUserListToLocalStorage(userList);
-
-    currentUser = newUser;
-    store.users.push(newUser);
-    await saveDataToLocalStorage(userId);
+    const newU = { id: uid('u'), name, email, pass: hashPassword(pass), location:'', age: '', gender: '', occupation: '', pic:'', gallery:[], friends:[], friendRequests:[], sentRequests:[] };
+    store.users.push(newU);
+    persist();
 
     document.getElementById('regName').value = '';
     document.getElementById('regEmail').value = '';
     document.getElementById('regPass').value = '';
     document.querySelector('#regPass + .password-toggle').textContent = translations[currentLang].show;
 
-    showSection('profilePanel');
-    showSuccess('profileSuccess', translations[currentLang].signupSuccess);
-    onLogin();
-  } catch (err) {
-    console.error('Signup error:', err);
-    showError('signupError', translations[currentLang].genericError);
-  } finally {
+    showSection('loginPanel');
+    showSuccess('loginMessage', translations[currentLang].signupSuccess);
+    document.getElementById('loginEmail').focus();
     hideLoading();
-  }
+  }, 500);
 }
 
-async function doLogin() {
+function doLogin(){
   showLoading();
-  try {
+  setTimeout(() => {
     const email = document.getElementById('loginEmail').value.trim();
-    const pass = document.getElementById('loginPass').value.trim();
+    const pass = hashPassword(document.getElementById('loginPass').value);
 
-    if (!email || !pass) {
+    if(!email || !document.getElementById('loginPass').value){
       showError('loginError', translations[currentLang].fillAllFields);
+      hideLoading();
       return;
     }
-    if (!validateEmail(email)) {
+    if(!validateEmail(email)){
       showError('loginError', translations[currentLang].invalidEmail);
+      hideLoading();
       return;
     }
 
-    let userList = await loadUserListFromLocalStorage();
-    const userMeta = userList.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (!userMeta) {
+    const user = store.users.find(u=>u.email===email && u.pass===pass);
+    if(!user){
       showError('loginError', translations[currentLang].invalidCredentials);
-      return;
-    }
-    if (userMeta.pass !== hashPassword(pass)) {
-      showError('loginError', translations[currentLang].invalidCredentials);
-      return;
-    }
-    if (userMeta.status !== 'active') {
-      showError('loginError', translations[currentLang].accountBlocked);
+      hideLoading();
       return;
     }
 
-    currentUser = { id: userMeta.id, email: userMeta.email, pass: userMeta.pass };
-    await loadDataFromLocalStorage(userMeta.id);
-    currentUser = store.users.find(u => u.id === userMeta.id) || currentUser;
-
+    currentUser = user;
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginPass').value = '';
     document.querySelector('#loginPass + .password-toggle').textContent = translations[currentLang].show;
-
-    showSection('profilePanel');
     onLogin();
-  } catch (err) {
-    console.error('Login error:', err);
-    showError('loginError', translations[currentLang].genericError);
-  } finally {
     hideLoading();
-  }
+  }, 500);
 }
 
-async function resetPassword() {
+function resetPassword(){
   showLoading();
-  try {
+  setTimeout(() => {
     const email = document.getElementById('forgotEmail').value.trim();
-    const newPass = document.getElementById('forgotNewPass').value.trim();
+    const newPass = document.getElementById('forgotNewPass').value;
 
-    if (!email || !newPass) {
+    if(!email || !newPass){
       showError('forgotError', translations[currentLang].fillAllFields);
+      hideLoading();
       return;
     }
-    if (!validateEmail(email)) {
+    if(!validateEmail(email)){
       showError('forgotError', translations[currentLang].invalidEmail);
+      hideLoading();
       return;
     }
-    if (newPass.length < 6) {
+    if(newPass.length < 6){
       showError('forgotError', translations[currentLang].passwordTooShort);
+      hideLoading();
       return;
     }
 
-    let userList = await loadUserListFromLocalStorage();
-    const user = userList.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (!user) {
+    const user = store.users.find(u=>u.email===email);
+    if(!user){
       showError('forgotError', translations[currentLang].emailNotFound);
+      hideLoading();
       return;
     }
 
     user.pass = hashPassword(newPass);
-    await saveUserListToLocalStorage(userList);
+    persist();
 
     document.getElementById('forgotEmail').value = '';
     document.getElementById('forgotNewPass').value = '';
@@ -538,93 +513,13 @@ async function resetPassword() {
 
     showSection('loginPanel');
     showSuccess('loginMessage', translations[currentLang].passwordResetSuccess);
-  } catch (err) {
-    console.error('Reset password error:', err);
-    showError('forgotError', translations[currentLang].genericError);
-  } finally {
+    document.getElementById('loginEmail').focus();
     hideLoading();
-  }
+  }, 500);
 }
 
-async function deleteMyData() {
-  if (!currentUser) return;
-  showLoading();
-  try {
-    let userList = await loadUserListFromLocalStorage();
-    userList = userList.filter(u => u.id !== currentUser.id);
-    await saveUserListToLocalStorage(userList);
-    localStorage.removeItem(`matrimonial_${currentUser.id}`);
-    store = { users: [], posts: [], chats: {}, notifications: {} };
-    showSuccess('profileSuccess', translations[currentLang].dataDeleted);
-    renderMyProfile();
-    logout();
-  } catch (err) {
-    console.error('Delete data error:', err);
-    showError('profileError', translations[currentLang].genericError);
-  } finally {
-    hideLoading();
-  }
-}
-
-async function renderAdminPanel() {
-  if (currentUser.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-    showError('adminError', translations[currentLang].adminAccessDenied);
-    return;
-  }
-  showLoading();
-  try {
-    const userList = await loadUserListFromLocalStorage();
-    const userListEl = document.getElementById('userList');
-    userListEl.innerHTML = userList.map(u => `
-      <div style="margin:10px 0">
-        ${escapeHtml(u.email)} (${u.status})
-        <button onclick="deleteUser('${u.id}')" style="background:#d32f2f;color:#fff;border:none;padding:6px;border-radius:4px;margin:0 5px">ডিলিট</button>
-      </div>
-    `).join('');
-  } catch (err) {
-    console.error('Render admin panel error:', err);
-    showError('adminError', translations[currentLang].genericError);
-  } finally {
-    hideLoading();
-  }
-}
-
-async function deleteUser(userId) {
-  if (currentUser.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-    showError('adminError', translations[currentLang].adminAccessDenied);
-    return;
-  }
-  showLoading();
-  try {
-    let userList = await loadUserListFromLocalStorage();
-    const userIndex = userList.findIndex(u => u.id === userId);
-    if (userIndex !== -1) {
-      userList[userIndex].status = 'deleted';
-      await saveUserListToLocalStorage(userList);
-      showSuccess('adminSuccess', translations[currentLang].userDeleted);
-      renderAdminPanel();
-    }
-  } catch (err) {
-    console.error('Delete user error:', err);
-    showError('adminError', translations[currentLang].genericError);
-  } finally {
-    hideLoading();
-  }
-}
-
-function logout() {
-  currentUser = null;
-  store = { users: [], posts: [], chats: {}, notifications: {} };
-  document.getElementById('mainNav').style.display = 'none';
-  document.getElementById('navAdmin').style.display = 'none';
-  showSection('loginPanel');
-}
-
-function onLogin() {
+function onLogin(){
   document.getElementById('mainNav').style.display = 'flex';
-  if (currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-    document.getElementById('navAdmin').style.display = 'inline-block';
-  }
   renderMyProfile();
   renderUsersList();
   renderRequests();
@@ -635,262 +530,152 @@ function onLogin() {
 }
 
 /* ---------------------------
-  Profile Image Upload
----------------------------*/
-async function updateMyPic(inp) {
-  const file = inp.files[0];
-  if (!file) return;
-  showLoading();
-  try {
-    const blob = await compressImage(file);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      currentUser.pic = reader.result;
-      await saveDataToLocalStorage(currentUser.id);
-      renderMyProfile();
-      showSuccess('profileSuccess', translations[currentLang].profilePicUploaded);
-      hideLoading();
-    };
-    reader.readAsDataURL(blob);
-  } catch (err) {
-    console.error('Profile pic upload error:', err);
-    showError('profileError', translations[currentLang].uploadFailed);
-    hideLoading();
-  }
-}
-
-function compressImage(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 200;
-        canvas.height = 200;
-        canvas.getContext('2d').drawImage(img, 0, 0, 200, 200);
-        canvas.toBlob(resolve, 'image/jpeg', 0.7);
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-/* ---------------------------
-  Gallery Image Upload
----------------------------*/
-async function addMyGallery(inp) {
-  const files = Array.from(inp.files || []);
-  if (files.length === 0) return;
-  showLoading();
-  currentUser.gallery = currentUser.gallery || [];
-  try {
-    for (const file of files) {
-      const blob = await compressImage(file);
-      const reader = new FileReader();
-      reader.onload = () => {
-        currentUser.gallery.push(reader.result);
-      };
-      reader.readAsDataURL(blob);
-    }
-    await saveDataToLocalStorage(currentUser.id);
-    renderMyProfile();
-    showSuccess('profileSuccess', translations[currentLang].galleryUploaded);
-    hideLoading();
-  } catch (err) {
-    console.error('Gallery upload error:', err);
-    showError('galleryError', translations[currentLang].uploadFailed);
-    hideLoading();
-  }
-}
-
-/* ---------------------------
-  Post Image Upload
----------------------------*/
-async function createPost() {
-  if (!currentUser) {
-    showError('postError', translations[currentLang].loginFirst);
-    return;
-  }
-  const text = sanitizeInput(document.getElementById('newPostText').value.trim());
-  const files = document.getElementById('newPostImages').files;
-  const images = [];
-
-  showLoading();
-  try {
-    for (const file of files) {
-      const blob = await compressImage(file);
-      const reader = new FileReader();
-      reader.onload = () => {
-        images.push(reader.result);
-      };
-      reader.readAsDataURL(blob);
-    }
-    const post = { id: uid('p'), userId: currentUser.id, text, images, reactions: {}, comments: [] };
-    store.posts.unshift(post);
-    await saveDataToLocalStorage(currentUser.id);
-    renderFeed();
-    clearPost();
-    showSuccess('postError', translations[currentLang].postCreated);
-    hideLoading();
-  } catch (err) {
-    console.error('Post creation error:', err);
-    showError('postError', translations[currentLang].uploadFailed);
-    hideLoading();
-  }
-}
-
-/* ---------------------------
   Profile
 ---------------------------*/
-function renderMyProfile() {
-  if (!currentUser) return;
-  document.getElementById('meName').textContent = currentUser.name || 'N/A';
-  document.getElementById('meEmail').textContent = currentUser.email || 'N/A';
+function renderMyProfile(){
+  if(!currentUser) return;
+  document.getElementById('meName').textContent = currentUser.name;
+  document.getElementById('meEmail').textContent = currentUser.email;
   document.getElementById('meLocation').textContent = currentUser.location || translations[currentLang].notSet;
   document.getElementById('meAge').textContent = currentUser.age ? `${currentUser.age} years` : translations[currentLang].notSet;
   document.getElementById('meGender').textContent = currentUser.gender || translations[currentLang].notSet;
   document.getElementById('meOccupation').textContent = currentUser.occupation || translations[currentLang].notSet;
-  document.getElementById('meFriendsCount').textContent = `${translations[currentLang].friends}: ${currentUser.friends.length}`;
-  document.getElementById('mePic').src = currentUser.pic || 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#bbb" font-size="14">No Image</text></svg>`);
+  document.getElementById('mePic').src = currentUser.pic || DEFAULT_IMAGE;
   document.getElementById('meGallery').innerHTML = '';
-  currentUser.gallery.forEach(src => {
+  currentUser.gallery.forEach(src=>{
     const img = document.createElement('img');
     img.src = src;
-    img.alt = "Gallery image";
+    img.onclick = () => openImageViewer(src);
     document.getElementById('meGallery').appendChild(img);
   });
-  const fdiv = document.getElementById('myFriends');
-  fdiv.innerHTML = '';
-  currentUser.friends.forEach(fid => {
-    const u = store.users.find(x => x.id === fid);
-    if (u) {
-      const el = document.createElement('div');
-      el.className = 'friend-pill';
-      el.innerHTML = `<img src="${u.pic || ''}" style="width:36px;height:36px;border-radius:6px;object-fit:cover" alt="${u.name}'s picture"/><div><strong style="font-size:13px">${u.name}</strong><div class="small">${u.location || ''}</div></div>`;
+  const fdiv = document.getElementById('myFriends'); fdiv.innerHTML='';
+  currentUser.friends.forEach(fid=>{
+    const u = store.users.find(x=>x.id===fid);
+    if(u){
+      const el = document.createElement('div'); el.className='friend-pill';
+      el.innerHTML = `<img src="${u.pic||DEFAULT_IMAGE}" style="width:36px;height:36px;border-radius:6px;object-fit:cover" onclick="openImageViewer('${u.pic}')"/><div><strong style="font-size:13px">${u.name}</strong><div class="small">${u.location||''}</div></div>`;
       el.onclick = () => openProfile(u.id);
       fdiv.appendChild(el);
     }
   });
 }
 
-async function toggleEditMe() {
+function toggleEditMe(){
   document.getElementById('meEdit').classList.toggle('hidden');
-  if (!document.getElementById('meEdit').classList.contains('hidden')) {
-    document.getElementById('meNameInput').value = currentUser.name || '';
-    document.getElementById('meLocationInput').value = currentUser.location || '';
-    document.getElementById('meAgeInput').value = currentUser.age || '';
-    document.getElementById('meGenderInput').value = currentUser.gender || '';
-    document.getElementById('meOccupationInput').value = currentUser.occupation || '';
+  if(!document.getElementById('meEdit').classList.contains('hidden')){
+    document.getElementById('meNameInput').value = currentUser.name;
+    document.getElementById('meLocationInput').value = currentUser.location;
+    document.getElementById('meAgeInput').value = currentUser.age;
+    document.getElementById('meGenderInput').value = currentUser.gender;
+    document.getElementById('meOccupationInput').value = currentUser.occupation;
   }
 }
 
-async function saveMe() {
+function saveMe(){
   showLoading();
-  try {
+  setTimeout(() => {
     currentUser.name = sanitizeInput(document.getElementById('meNameInput').value || currentUser.name);
     currentUser.location = sanitizeInput(document.getElementById('meLocationInput').value || currentUser.location);
     currentUser.age = document.getElementById('meAgeInput').value || currentUser.age;
     currentUser.gender = document.getElementById('meGenderInput').value || currentUser.gender;
     currentUser.occupation = sanitizeInput(document.getElementById('meOccupationInput').value || currentUser.occupation);
-    await saveDataToLocalStorage(currentUser.id);
+    persist();
     renderMyProfile();
     toggleEditMe();
-    showSuccess('profileSuccess', translations[currentLang].saved);
+    alert(translations[currentLang].saved);
     hideLoading();
-  } catch (err) {
-    console.error('Save profile error:', err);
-    showError('profileError', translations[currentLang].genericError);
-    hideLoading();
-  }
+  }, 500);
+}
+
+function updateMyPic(inp){
+  const file = inp.files[0];
+  if(!file) return;
+  compressImage(file, (blob) => {
+    const oldPic = currentUser.pic;
+    currentUser.pic = URL.createObjectURL(blob);
+    if(oldPic !== currentUser.pic && currentUser.pic){
+      const post = {
+        id: uid('p'),
+        userId: currentUser.id,
+        text: `${currentUser.name} ${translations[currentLang].updatedProfilePic}`,
+        images: [currentUser.pic],
+        reactions: {},
+        comments: []
+      };
+      store.posts.unshift(post);
+    }
+    persist();
+    renderMyProfile();
+    renderFeed();
+  });
+}
+
+function addMyGallery(inp){
+  const files = Array.from(inp.files||[]);
+  files.forEach(f=> compressImage(f, (blob) => {
+    currentUser.gallery.push(URL.createObjectURL(blob));
+    persist();
+    renderMyProfile();
+  }));
 }
 
 /* ---------------------------
-  Browse Users & Profiles
+  Browse users & profiles
 ---------------------------*/
-function renderUsersList() {
-  const list = document.getElementById('usersList');
-  list.innerHTML = '';
-  store.users.filter(u => u.id !== currentUser.id && u.status === 'active').forEach(u => {
-    const el = document.createElement('div');
-    el.className = 'friend-pill';
-    el.innerHTML = `<img src="${u.pic || ''}" style="width:48px;height:48px;border-radius:8px;object-fit:cover" alt="${u.name}'s picture"/><div style="min-width:140px"><strong>${u.name}</strong><div class="small">${u.location || ''}</div><div class="small">${u.age ? u.age + ' years' : ''} ${u.gender || ''}</div></div>`;
-    const btns = document.createElement('div');
-    btns.style.marginLeft = 'auto';
+function renderUsersList(){
+  const list = document.getElementById('usersList'); list.innerHTML='';
+  store.users.filter(u=>u.id!==currentUser.id).forEach(u=>{
+    const el = document.createElement('div'); el.className='friend-pill';
+    el.innerHTML = `<img src="${u.pic||DEFAULT_IMAGE}" style="width:48px;height:48px;border-radius:8px;object-fit:cover" onclick="openImageViewer('${u.pic}')"/><div style="min-width:140px"><strong>${u.name}</strong><div class="small">${u.location||''}</div><div class="small">${u.age ? u.age+' years' : ''} ${u.gender||''}</div></div>`;
+    const btns = document.createElement('div'); btns.style.marginLeft='auto';
     const isFriend = currentUser.friends.includes(u.id);
     const sent = currentUser.sentRequests.includes(u.id);
-    if (isFriend) {
-      const b = document.createElement('button');
-      b.className = 'btn-outline';
-      b.textContent = translations[currentLang].friends;
-      b.onclick = () => openProfile(u.id);
-      btns.appendChild(b);
-    } else if (sent) {
-      const b = document.createElement('button');
-      b.className = 'btn-outline';
-      b.textContent = translations[currentLang].cancelRequest;
-      b.onclick = () => cancelRequest(u.id);
-      btns.appendChild(b);
+    if(isFriend){
+      const b = document.createElement('button'); b.className='btn-outline'; b.textContent=translations[currentLang].friends; b.onclick = ()=> openProfile(u.id); btns.appendChild(b);
+    } else if(sent){
+      const b = document.createElement('button'); b.className='btn-outline'; b.textContent=translations[currentLang].cancelRequest; b.onclick = ()=> cancelRequest(u.id); btns.appendChild(b);
     } else {
-      const b = document.createElement('button');
-      b.textContent = translations[currentLang].sendRequest;
-      b.onclick = () => sendFriendRequest(u.id);
-      btns.appendChild(b);
+      const b = document.createElement('button'); b.textContent=translations[currentLang].sendRequest; b.onclick = ()=> sendFriendRequest(u.id); btns.appendChild(b);
     }
     el.appendChild(btns);
     list.appendChild(el);
   });
 }
 
-function filterUsers() {
+function filterUsers(){
   const name = document.getElementById('searchName').value.toLowerCase();
   const gender = document.getElementById('filterGender').value;
-  const list = document.getElementById('usersList');
-  list.innerHTML = '';
+  const list = document.getElementById('usersList'); list.innerHTML='';
   store.users
-    .filter(u => u.id !== currentUser.id && u.status === 'active' && (!name || u.name.toLowerCase().includes(name)) && (!gender || u.gender === gender))
+    .filter(u => u.id !== currentUser.id && (!name || u.name.toLowerCase().includes(name)) && (!gender || u.gender === gender))
     .forEach(u => {
-      const el = document.createElement('div');
-      el.className = 'friend-pill';
-      el.innerHTML = `<img src="${u.pic || ''}" style="width:48px;height:48px;border-radius:8px;object-fit:cover" alt="${u.name}'s picture"/><div style="min-width:140px"><strong>${u.name}</strong><div class="small">${u.location || ''}</div><div class="small">${u.age ? u.age + ' years' : ''} ${u.gender || ''}</div></div>`;
-      const btns = document.createElement('div');
-      btns.style.marginLeft = 'auto';
+      const el = document.createElement('div'); el.className='friend-pill';
+      el.innerHTML = `<img src="${u.pic||DEFAULT_IMAGE}" style="width:48px;height:48px;border-radius:8px;object-fit:cover" onclick="openImageViewer('${u.pic}')"/><div style="min-width:140px"><strong>${u.name}</strong><div class="small">${u.location||''}</div><div class="small">${u.age ? u.age+' years' : ''} ${u.gender||''}</div></div>`;
+      const btns = document.createElement('div'); btns.style.marginLeft='auto';
       const isFriend = currentUser.friends.includes(u.id);
       const sent = currentUser.sentRequests.includes(u.id);
-      if (isFriend) {
-        const b = document.createElement('button');
-        b.className = 'btn-outline';
-        b.textContent = translations[currentLang].friends;
-        b.onclick = () => openProfile(u.id);
-        btns.appendChild(b);
-      } else if (sent) {
-        const b = document.createElement('button');
-        b.className = 'btn-outline';
-        b.textContent = translations[currentLang].cancelRequest;
-        b.onclick = () => cancelRequest(u.id);
-        btns.appendChild(b);
+      if(isFriend){
+        const b = document.createElement('button'); b.className='btn-outline'; b.textContent=translations[currentLang].friends; b.onclick = ()=> openProfile(u.id); btns.appendChild(b);
+      } else if(sent){
+        const b = document.createElement('button'); b.className='btn-outline'; b.textContent=translations[currentLang].cancelRequest; b.onclick = ()=> cancelRequest(u.id); btns.appendChild(b);
       } else {
-        const b = document.createElement('button');
-        b.textContent = translations[currentLang].sendRequest;
-        b.onclick = () => sendFriendRequest(u.id);
-        btns.appendChild(b);
+        const b = document.createElement('button'); b.textContent=translations[currentLang].sendRequest; b.onclick = ()=> sendFriendRequest(u.id); btns.appendChild(b);
       }
       el.appendChild(btns);
       list.appendChild(el);
     });
 }
 
-function openProfile(uid) {
-  const u = store.users.find(x => x.id === uid);
+function openProfile(uid){
+  const u = store.users.find(x=>x.id===uid);
   const container = document.getElementById('viewProfile');
   container.classList.remove('hidden');
   container.innerHTML = '';
   const html = document.createElement('div');
   html.innerHTML = `
     <div style="display:flex;gap:10px;align-items:center">
-      <img src="${u.pic || ''}" class="profile-thumb" alt="${u.name}'s profile picture" />
-      <div><h3>${u.name}</h3><div class="small">${u.email}</div><div class="small">${u.location || translations[currentLang].notSet}</div><div class="small">${u.age ? u.age + ' years' : translations[currentLang].notSet} ${u.gender || ''}</div><div class="small">${u.occupation || translations[currentLang].notSet}</div><div class="small">${translations[currentLang].friends}: ${u.friends.length}</div></div>
+      <img src="${u.pic||DEFAULT_IMAGE}" class="profile-thumb" alt="${u.name}'s profile picture" onclick="openImageViewer('${u.pic}')"/>
+      <div><h3>${u.name}</h3><div class="small">${u.email}</div><div class="small">${u.location||translations[currentLang].notSet}</div><div class="small">${u.age ? u.age+' years' : translations[currentLang].notSet} ${u.gender||''}</div><div class="small">${u.occupation||translations[currentLang].notSet}</div></div>
     </div>
     <div style="margin-top:8px">
       <button id="profileFriendBtn" aria-label="Friend action"></button>
@@ -902,198 +687,123 @@ function openProfile(uid) {
   `;
   container.appendChild(html);
   const btn = document.getElementById('profileFriendBtn');
-  if (u.id === currentUser.id) {
-    btn.textContent = translations[currentLang].thisIsYou;
-    btn.disabled = true;
-  } else if (currentUser.friends.includes(u.id)) {
-    btn.textContent = translations[currentLang].unfriend;
-    btn.onclick = () => unfriend(u.id);
-  } else if (currentUser.sentRequests.includes(u.id)) {
-    btn.textContent = translations[currentLang].cancelRequest;
-    btn.onclick = () => cancelRequest(u.id);
-  } else if (currentUser.friendRequests.includes(u.id)) {
-    btn.textContent = translations[currentLang].acceptRequest;
-    btn.onclick = () => acceptFriend(u.id);
+  if(u.id === currentUser.id){
+    btn.textContent = translations[currentLang].thisIsYou; btn.disabled = true;
+  } else if(currentUser.friends.includes(u.id)){
+    btn.textContent = translations[currentLang].unfriend; btn.onclick = () => { if(confirm(translations[currentLang].confirmUnfriend)) unfriend(u.id); };
+  } else if(currentUser.sentRequests.includes(u.id)){
+    btn.textContent = translations[currentLang].cancelRequest; btn.onclick = () => cancelRequest(u.id);
+  } else if(currentUser.friendRequests.includes(u.id)){
+    btn.textContent = translations[currentLang].acceptRequest; btn.onclick = () => acceptFriend(u.id);
   } else {
-    btn.textContent = translations[currentLang].sendRequest;
-    btn.onclick = () => sendFriendRequest(u.id);
+    btn.textContent = translations[currentLang].sendRequest; btn.onclick = () => sendFriendRequest(u.id);
   }
-  const fl = document.getElementById('profileFriendList');
-  fl.innerHTML = '';
-  u.friends.forEach(fid => {
-    const fu = store.users.find(x => x.id === fid);
-    if (fu) {
-      const fEl = document.createElement('div');
-      fEl.className = 'friend-pill';
-      fEl.innerHTML = `<img src="${fu.pic || ''}" style="width:36px;height:36px;border-radius:6px" alt="${fu.name}'s picture"/><div><strong>${fu.name}</strong></div>`;
-      fl.appendChild(fEl);
+  const fl = document.getElementById('profileFriendList'); fl.innerHTML = '';
+  u.friends.forEach(fid=>{
+    const fu = store.users.find(x=>x.id===fid);
+    if(fu){
+      const fEl = document.createElement('div'); fEl.className='friend-pill'; fEl.innerHTML=`<img src="${fu.pic||DEFAULT_IMAGE}" style="width:36px;height:36px;border-radius:6px" alt="${fu.name}'s picture" onclick="openImageViewer('${fu.pic}')"/><div><strong>${fu.name}</strong></div>`; fl.appendChild(fEl);
     }
   });
-  container.scrollIntoView({ behavior: 'smooth' });
+  container.scrollIntoView({behavior:'smooth'});
 }
 
-async function sendFriendRequest(targetId) {
+function sendFriendRequest(targetId){
   showLoading();
-  try {
-    const target = store.users.find(u => u.id === targetId);
-    if (!target) return;
-    if (!target.friendRequests.includes(currentUser.id)) target.friendRequests.push(currentUser.id);
-    if (!currentUser.sentRequests.includes(targetId)) currentUser.sentRequests.push(targetId);
+  setTimeout(() => {
+    const target = store.users.find(u=>u.id===targetId);
+    if(!target) return;
+    if(!target.friendRequests.includes(currentUser.id)) target.friendRequests.push(currentUser.id);
+    if(!currentUser.sentRequests.includes(targetId)) currentUser.sentRequests.push(targetId);
     addNotification(targetId, `${currentUser.name} ${translations[currentLang].friendRequestText}`);
-    await saveDataToLocalStorage(currentUser.id);
-    renderUsersList();
-    renderRequests();
-    renderNotifications();
-    showSuccess('profileSuccess', translations[currentLang].requestSent);
+    persist();
+    renderUsersList(); renderRequests(); renderNotifications();
+    alert(translations[currentLang].requestSent);
     hideLoading();
-  } catch (err) {
-    console.error('Send friend request error:', err);
-    showError('profileError', translations[currentLang].genericError);
-    hideLoading();
-  }
+  }, 500);
 }
 
-async function cancelRequest(targetId) {
-  showLoading();
-  try {
-    const target = store.users.find(u => u.id === targetId);
-    if (!target) return;
-    target.friendRequests = target.friendRequests.filter(x => x !== currentUser.id);
-    currentUser.sentRequests = currentUser.sentRequests.filter(x => x !== targetId);
-    await saveDataToLocalStorage(currentUser.id);
-    renderUsersList();
-    renderRequests();
-    renderNotifications();
-    showSuccess('profileSuccess', translations[currentLang].requestCancelled);
-    hideLoading();
-  } catch (err) {
-    console.error('Cancel request error:', err);
-    showError('profileError', translations[currentLang].genericError);
-    hideLoading();
-  }
+function cancelRequest(targetId){
+  const target = store.users.find(u=>u.id===targetId);
+  if(!target) return;
+  target.friendRequests = target.friendRequests.filter(x=>x!==currentUser.id);
+  currentUser.sentRequests = currentUser.sentRequests.filter(x=>x!==targetId);
+  persist(); renderUsersList(); renderRequests(); renderNotifications(); alert(translations[currentLang].requestCancelled);
 }
 
-async function acceptFriend(fromId) {
-  showLoading();
-  try {
-    if (!currentUser.friendRequests.includes(fromId)) return;
-    if (!currentUser.friends.includes(fromId)) currentUser.friends.push(fromId);
-    const from = store.users.find(u => u.id === fromId);
-    if (from && !from.friends.includes(currentUser.id)) from.friends.push(currentUser.id);
-    currentUser.friendRequests = currentUser.friendRequests.filter(x => x !== fromId);
-    if (from) from.sentRequests = from.sentRequests.filter(x => x !== currentUser.id);
-    addNotification(fromId, `${currentUser.name} ${translations[currentLang].friendAdded}`);
-    await saveDataToLocalStorage(currentUser.id);
-    renderMyProfile();
-    renderUsersList();
-    renderRequests();
-    renderChatContacts();
-    renderNotifications();
-    showSuccess('profileSuccess', translations[currentLang].friendAdded);
-    hideLoading();
-  } catch (err) {
-    console.error('Accept friend error:', err);
-    showError('profileError', translations[currentLang].genericError);
-    hideLoading();
-  }
+function acceptFriend(fromId){
+  if(!currentUser.friendRequests.includes(fromId)) return;
+  if(!currentUser.friends.includes(fromId)) currentUser.friends.push(fromId);
+  const from = store.users.find(u=>u.id===fromId);
+  if(from && !from.friends.includes(currentUser.id)) from.friends.push(currentUser.id);
+  currentUser.friendRequests = currentUser.friendRequests.filter(x=>x!==fromId);
+  if(from) from.sentRequests = from.sentRequests.filter(x=>x!==currentUser.id);
+  addNotification(fromId, `${currentUser.name} ${translations[currentLang].friendAdded}`);
+  persist(); renderMyProfile(); renderUsersList(); renderRequests(); renderChatContacts(); renderNotifications();
+  alert(translations[currentLang].friendAdded);
 }
 
-async function declineFriend(fromId) {
-  showLoading();
-  try {
-    currentUser.friendRequests = currentUser.friendRequests.filter(x => x !== fromId);
-    const from = store.users.find(u => u.id === fromId);
-    if (from) from.sentRequests = from.sentRequests.filter(x => x !== currentUser.id);
-    await saveDataToLocalStorage(currentUser.id);
-    renderRequests();
-    renderNotifications();
-    showSuccess('profileSuccess', translations[currentLang].requestDeclined);
-    hideLoading();
-  } catch (err) {
-    console.error('Decline friend error:', err);
-    showError('profileError', translations[currentLang].genericError);
-    hideLoading();
-  }
+function declineFriend(fromId){
+  currentUser.friendRequests = currentUser.friendRequests.filter(x=>x!==fromId);
+  const from = store.users.find(u=>u.id===fromId);
+  if(from) from.sentRequests = from.sentRequests.filter(x=>x!==currentUser.id);
+  persist(); renderRequests(); renderNotifications(); alert(translations[currentLang].requestDeclined);
 }
 
-async function unfriend(uid) {
-  showLoading();
-  try {
-    currentUser.friends = currentUser.friends.filter(x => x !== uid);
-    const other = store.users.find(u => u.id === uid);
-    if (other) other.friends = other.friends.filter(x => x !== currentUser.id);
-    await saveDataToLocalStorage(currentUser.id);
-    renderMyProfile();
-    renderUsersList();
-    renderChatContacts();
-    renderNotifications();
-    showSuccess('profileSuccess', translations[currentLang].unfriended);
-    hideLoading();
-  } catch (err) {
-    console.error('Unfriend error:', err);
-    showError('profileError', translations[currentLang].genericError);
-    hideLoading();
-  }
+function unfriend(uid){
+  currentUser.friends = currentUser.friends.filter(x=>x!==uid);
+  const other = store.users.find(u=>u.id===uid);
+  if(other) other.friends = other.friends.filter(x=>x!==currentUser.id);
+  persist(); renderMyProfile(); renderUsersList(); renderChatContacts(); renderNotifications(); alert(translations[currentLang].unfriended);
 }
 
-function viewGallery(uid) {
-  const u = store.users.find(x => x.id === uid);
-  if (!u) return;
+function viewGallery(uid){
+  const u = store.users.find(x=>x.id===uid);
+  if(!u) return;
   let html = `<h4>${u.name} - ${translations[currentLang].gallery}</h4><div class="gallery">`;
-  u.gallery.forEach(g => html += `<img src="${g}" alt="Gallery image">`);
+  u.gallery.forEach(g=> html+=`<img src="${g}" alt="Gallery image" onclick="openImageViewer('${g}')">`);
   html += '</div>';
-  const cont = document.getElementById('viewProfile');
-  cont.classList.remove('hidden');
-  cont.innerHTML = html;
+  const cont = document.getElementById('viewProfile'); cont.classList.remove('hidden'); cont.innerHTML = html;
 }
 
 /* ---------------------------
   Notifications
 ---------------------------*/
-async function addNotification(userId, message) {
-  try {
-    if (!store.notifications[userId]) store.notifications[userId] = [];
-    store.notifications[userId].push({ id: uid('n'), message, time: Date.now() });
-    await saveDataToLocalStorage(currentUser.id);
-  } catch (err) {
-    console.error('Add notification error:', err);
-  }
+function addNotification(userId, message){
+  if(!store.notifications[userId]) store.notifications[userId] = [];
+  store.notifications[userId].push({ id: uid('n'), message, time: Date.now() });
+  persist();
 }
 
-function renderNotifications() {
-  const list = document.getElementById('notificationsList');
-  list.innerHTML = '';
+function renderNotifications(){
+  const list = document.getElementById('notificationsList'); list.innerHTML = '';
   const notifs = store.notifications[currentUser.id] || [];
   notifs.forEach(n => {
-    const el = document.createElement('div');
-    el.className = 'card';
+    const el = document.createElement('div'); el.className = 'card';
     el.innerHTML = `<div>${n.message}</div><div class="small muted">${new Date(n.time).toLocaleString()}</div>`;
     list.appendChild(el);
   });
 }
 
 /* ---------------------------
-  Requests Panel
+  Requests panel
 ---------------------------*/
-function renderRequests() {
+function renderRequests(){
   const incoming = document.getElementById('incomingRequests');
   incoming.innerHTML = '';
-  currentUser.friendRequests.forEach(fromId => {
-    const from = store.users.find(u => u.id === fromId);
-    if (from) {
-      const el = document.createElement('div');
-      el.className = 'card';
+  currentUser.friendRequests.forEach(fromId=>{
+    const from = store.users.find(u=>u.id===fromId);
+    if(from){
+      const el = document.createElement('div'); el.className='card';
       el.innerHTML = `<strong>${from.name}</strong> ${translations[currentLang].friendRequestText} <div style="margin-top:6px"><button onclick="acceptFriend('${from.id}')">${translations[currentLang].accept}</button> <button class="btn-outline" onclick="declineFriend('${from.id}')">${translations[currentLang].decline}</button></div>`;
       incoming.appendChild(el);
     }
   });
-  const sent = document.getElementById('sentRequests');
-  sent.innerHTML = '';
-  currentUser.sentRequests.forEach(toId => {
-    const to = store.users.find(u => u.id === toId);
-    if (to) {
-      const el = document.createElement('div');
-      el.className = 'card';
+  const sent = document.getElementById('sentRequests'); sent.innerHTML = '';
+  currentUser.sentRequests.forEach(toId=>{
+    const to = store.users.find(u=>u.id===toId);
+    if(to){
+      const el = document.createElement('div'); el.className='card';
       el.innerHTML = `<strong>${translations[currentLang].to} ${to.name}</strong> <div><button onclick="cancelRequest('${to.id}')" class="btn-outline">${translations[currentLang].cancel}</button></div>`;
       sent.appendChild(el);
     }
@@ -1112,51 +822,82 @@ const REACTS = {
   danger: '⚠️'
 };
 
-function previewPostImages(inp) {
-  const files = Array.from(inp.files || []);
+function previewPostImages(inp){
+  const files = Array.from(inp.files||[]);
   const preview = document.getElementById('postPreview');
   preview.innerHTML = '';
-  files.forEach(f => compressImage(f).then(blob => {
-    const img = document.createElement('img');
-    img.src = URL.createObjectURL(blob);
-    img.alt = "Post preview";
+  files.forEach(f=> compressImage(f, (blob) => {
+    const img = document.createElement('img'); img.src = URL.createObjectURL(blob);
+    img.onclick = () => openImageViewer(img.src);
     preview.appendChild(img);
   }));
 }
 
-function clearPost() {
-  document.getElementById('newPostText').value = '';
-  document.getElementById('newPostImages').value = '';
-  document.getElementById('postPreview').innerHTML = '';
+function createPost(){
+  if(!currentUser) return alert(translations[currentLang].loginFirst);
+  const text = sanitizeInput(document.getElementById('newPostText').value.trim());
+  const files = document.getElementById('newPostImages').files;
+  const images = [];
+  const done = () => {
+    const post = { id: uid('p'), userId: currentUser.id, text, images, reactions: {}, comments: [] };
+    store.posts.unshift(post);
+    persist(); renderFeed(); clearPost();
+  };
+  if(files.length === 0) return done();
+  Array.from(files).forEach(f => compressImage(f, (blob) => {
+    images.push(URL.createObjectURL(blob));
+    if(images.length === files.length) done();
+  }));
 }
 
-function renderFeed() {
-  const area = document.getElementById('feedArea');
-  area.innerHTML = '';
-  store.posts.forEach(p => {
-    const user = store.users.find(u => u.id === p.userId) || {};
-    const card = document.createElement('div');
-    card.className = 'post-card';
-    let html = `<div style="display:flex;gap:8px;align-items:center"><img src="${user.pic || ''}" style="width:44px;height:44px;border-radius:8px;object-fit:cover" alt="${user.name}'s picture"/><div><strong>${user.name || 'Unknown'}</strong><div class="small">${user.location || ''}</div></div></div>`;
-    html += `<p style="margin-top:8px">${escapeHtml(p.text || '')}</p>`;
-    if (p.images && p.images.length) {
-      html += `<div class="gallery">${p.images.map(i => `<img src="${i}" alt="Post image">`).join('')}</div>`;
+function clearPost(){
+  document.getElementById('newPostText').value='';
+  document.getElementById('newPostImages').value='';
+  document.getElementById('postPreview').innerHTML='';
+}
+
+function renderFeed(){
+  const area = document.getElementById('feedArea'); area.innerHTML='';
+  store.posts.forEach(p=>{
+    const user = store.users.find(u=>u.id===p.userId) || {};
+    const card = document.createElement('div'); card.className='card';
+    let html = `<div style="display:flex;gap:8px;align-items:center"><img src="${user.pic||DEFAULT_IMAGE}" style="width:44px;height:44px;border-radius:8px;object-fit:cover" alt="${user.name}'s picture" onclick="openImageViewer('${user.pic}')"/><div><strong>${user.name||'Unknown'}</strong><div class="small">${user.location||''}</div></div></div>`;
+    html += `<p style="margin-top:8px">${escapeHtml(p.text||'')}</p>`;
+    if(p.images && p.images.length){
+      html += `<div class="gallery">${p.images.map(i=>`<img src="${i}" alt="Post image" onclick="openImageViewer('${i}')">`).join('')}</div>`;
     }
     const counts = summarizeReacts(p.reactions);
-    html += `<div class="small muted">${translations[currentLang].reactions}: ${counts.map(c => c.count ? `${REACTS[c.type]} ${c.count}` : '').filter(Boolean).join(' ') || '0'}</div>`;
+    html += `<div class="small muted">${translations[currentLang].reactions}: ${counts.map(c=>c.count? `${REACTS[c.type]} ${c.count}` : '').filter(Boolean).join(' ') || '0'}</div>`;
     html += `<div class="post-actions">`;
     html += `<div style="display:flex;gap:6px">`;
-    Object.keys(REACTS).forEach(rt => {
-      html += `<button class="react-btn" onclick="toggleReact('${p.id}','${rt}')" aria-label="React ${rt}">${REACTS[rt]}</button>`;
+    Object.keys(REACTS).forEach(rt=>{
+      html += `<button class="react-btn" onclick="toggleReact('${p.id}','${rt}')" aria-label="React with ${rt}">${REACTS[rt]}</button>`;
     });
     html += `</div>`;
     html += `<div style="margin-left:auto"><button class="btn-outline" onclick="focusCommentBox('${p.id}')" aria-label="Comment on post">${translations[currentLang].comment}</button></div>`;
     html += `</div>`;
     html += `<div id="comments-${p.id}" style="margin-top:8px">`;
-    p.comments.forEach(c => {
-      html += `<div class="comment"><strong>${(store.users.find(u => u.id === c.userId) || { name: 'User' }).name}</strong> <div>${escapeHtml(c.text)}</div>`;
-      c.replies.forEach(r => {
-        html += `<div class="reply"><strong>${(store.users.find(u => u.id === r.userId) || { name: 'User' }).name}</strong> <div>${escapeHtml(r.text)}</div></div>`;
+    p.comments.forEach(c=>{
+      const commentUser = store.users.find(u=>u.id===c.userId)||{name:'User'};
+      html += `<div class="comment"><strong>${commentUser.name}</strong> <div>${escapeHtml(c.text)}</div>`;
+      const commentCounts = summarizeReacts(c.reactions);
+      html += `<div class="small muted">${translations[currentLang].reactions}: ${commentCounts.map(c=>c.count? `${REACTS[c.type]} ${c.count}` : '').filter(Boolean).join(' ') || '0'}</div>`;
+      html += `<div style="display:flex;gap:6px">`;
+      Object.keys(REACTS).forEach(rt=>{
+        html += `<button class="react-btn" onclick="toggleCommentReact('${p.id}','${c.id}','${rt}')" aria-label="React with ${rt}">${REACTS[rt]}</button>`;
+      });
+      html += `</div>`;
+      c.replies.forEach(r=>{
+        const replyUser = store.users.find(u=>u.id===r.userId)||{name:'User'};
+        html += `<div class="reply"><strong>${replyUser.name}</strong> <div>${escapeHtml(r.text)}</div>`;
+        const replyCounts = summarizeReacts(r.reactions);
+        html += `<div class="small muted">${translations[currentLang].reactions}: ${replyCounts.map(c=>c.count? `${REACTS[c.type]} ${c.count}` : '').filter(Boolean).join(' ') || '0'}</div>`;
+        html += `<div style="display:flex;gap:6px">`;
+        Object.keys(REACTS).forEach(rt=>{
+          html += `<button class="react-btn" onclick="toggleReplyReact('${p.id}','${c.id}','${r.id}','${rt}')" aria-label="React with ${rt}">${REACTS[rt]}</button>`;
+        });
+        html += `</div>`;
+        html += `</div>`;
       });
       html += `<div style="margin-top:6px"><input id="replyInput-${p.id}-${c.id}" placeholder="${translations[currentLang].reply}" aria-label="Reply to comment"><button onclick="replyToComment('${p.id}','${c.id}')" aria-label="Submit reply">${translations[currentLang].reply}</button></div>`;
       html += `</div>`;
@@ -1168,138 +909,139 @@ function renderFeed() {
   });
 }
 
-function summarizeReacts(reactions) {
+function summarizeReacts(reactions){
   const map = {};
-  Object.keys(REACTS).forEach(k => map[k] = 0);
-  Object.values(reactions || {}).forEach(v => map[v] = (map[v] || 0) + 1);
-  return Object.keys(map).map(k => ({ type: k, count: map[k] })).sort((a, b) => b.count - a.count);
+  Object.keys(REACTS).forEach(k=> map[k]=0);
+  Object.values(reactions||{}).forEach(v=> map[v] = (map[v]||0)+1);
+  return Object.keys(map).map(k=>({type:k,count:map[k]})).sort((a,b)=>b.count-a.count);
 }
 
-async function toggleReact(postId, reactType) {
-  showLoading();
-  try {
-    const post = store.posts.find(p => p.id === postId);
-    if (!post) return;
-    const prev = post.reactions[currentUser.id];
-    if (prev === reactType) delete post.reactions[currentUser.id];
-    else post.reactions[currentUser.id] = reactType;
-    await saveDataToLocalStorage(currentUser.id);
-    renderFeed();
-    hideLoading();
-  } catch (err) {
-    console.error('Toggle react error:', err);
-    showError('postError', translations[currentLang].genericError);
-    hideLoading();
-  }
+function toggleReact(postId, reactType){
+  const post = store.posts.find(p=>p.id===postId);
+  if(!post) return;
+  const prev = post.reactions[currentUser.id];
+  if(prev === reactType) delete post.reactions[currentUser.id];
+  else post.reactions[currentUser.id] = reactType;
+  persist(); renderFeed();
 }
 
-async function addComment(postId) {
-  showLoading();
-  try {
-    const inp = document.getElementById('commentInput-' + postId);
-    const text = sanitizeInput(inp.value.trim());
-    if (!text) return;
-    const post = store.posts.find(p => p.id === postId);
-    if (!post) {
-      showError('postError', translations[currentLang].postNotFound);
-      return;
-    }
-    const comment = { id: uid('c'), userId: currentUser.id, text, replies: [] };
-    post.comments.push(comment);
-    await saveDataToLocalStorage(currentUser.id);
-    renderFeed();
-    hideLoading();
-  } catch (err) {
-    console.error('Add comment error:', err);
-    showError('postError', translations[currentLang].genericError);
-    hideLoading();
-  }
+function toggleCommentReact(postId, commentId, reactType){
+  const post = store.posts.find(p=>p.id===postId);
+  if(!post) return;
+  const comment = post.comments.find(c=>c.id===commentId);
+  if(!comment) return;
+  if(!comment.reactions) comment.reactions = {};
+  const prev = comment.reactions[currentUser.id];
+  if(prev === reactType) delete comment.reactions[currentUser.id];
+  else comment.reactions[currentUser.id] = reactType;
+  persist(); renderFeed();
 }
 
-async function replyToComment(postId, commentId) {
-  showLoading();
-  try {
-    const inp = document.getElementById(`replyInput-${postId}-${commentId}`);
-    const text = sanitizeInput(inp.value.trim());
-    if (!text) return;
-    const post = store.posts.find(p => p.id === postId);
-    if (!post) return;
-    const comment = post.comments.find(c => c.id === commentId);
-    if (!comment) return;
-    comment.replies.push({ id: uid('r'), userId: currentUser.id, text });
-    await saveDataToLocalStorage(currentUser.id);
-    renderFeed();
-    hideLoading();
-  } catch (err) {
-    console.error('Reply to comment error:', err);
-    showError('postError', translations[currentLang].genericError);
-    hideLoading();
-  }
+function toggleReplyReact(postId, commentId, replyId, reactType){
+  const post = store.posts.find(p=>p.id===postId);
+  if(!post) return;
+  const comment = post.comments.find(c=>c.id===commentId);
+  if(!comment) return;
+  const reply = comment.replies.find(r=>r.id===replyId);
+  if(!reply) return;
+  if(!reply.reactions) reply.reactions = {};
+  const prev = reply.reactions[currentUser.id];
+  if(prev === reactType) delete reply.reactions[currentUser.id];
+  else reply.reactions[currentUser.id] = reactType;
+  persist(); renderFeed();
 }
 
-function focusCommentBox(postId) {
-  document.getElementById('commentInput-' + postId).focus();
+function addComment(postId){
+  const inp = document.getElementById('commentInput-'+postId);
+  const text = sanitizeInput(inp.value.trim());
+  if(!text) return;
+  const post = store.posts.find(p=>p.id===postId);
+  if(!post){ alert(translations[currentLang].postNotFound); return; }
+  const comment = { id: uid('c'), userId: currentUser.id, text, replies: [], reactions: {} };
+  post.comments.push(comment);
+  persist(); renderFeed();
+}
+
+function replyToComment(postId, commentId){
+  const inp = document.getElementById(`replyInput-${postId}-${commentId}`);
+  const text = sanitizeInput(inp.value.trim());
+  if(!text) return;
+  const post = store.posts.find(p=>p.id===postId);
+  if(!post) return;
+  const comment = post.comments.find(c=>c.id===commentId);
+  if(!comment) return;
+  comment.replies.push({ id: uid('r'), userId: currentUser.id, text, reactions: {} });
+  persist(); renderFeed();
+}
+
+function focusCommentBox(postId){
+  document.getElementById('commentInput-'+postId).focus();
 }
 
 /* ---------------------------
   Chat
 ---------------------------*/
-function chatId(a, b) { return [a, b].sort().join('_'); }
+function chatId(a,b){ return [a,b].sort().join('_') }
 
-function renderChatContacts() {
-  const cont = document.getElementById('chatContacts');
-  cont.innerHTML = '';
-  currentUser.friends.forEach(fid => {
-    const fu = store.users.find(u => u.id === fid);
-    if (fu) {
-      const el = document.createElement('div');
-      el.className = 'friend-pill';
-      el.style.cursor = 'pointer';
-      el.innerHTML = `<img src="${fu.pic || ''}" style="width:36px;height:36px;border-radius:6px;object-fit:cover" alt="${fu.name}'s picture"/><div><strong>${fu.name}</strong></div>`;
+function toggleChatFullscreen(){
+  const chatPanel = document.getElementById('chatPanel');
+  chatPanel.classList.toggle('fullscreen');
+}
+
+function renderChatContacts(){
+  const cont = document.getElementById('chatContacts'); cont.innerHTML='';
+  currentUser.friends.forEach(fid=>{
+    const fu = store.users.find(u=>u.id===fid);
+    if(fu){
+      const el = document.createElement('div'); el.className='friend-pill'; el.style.cursor='pointer';
+      el.innerHTML = `<img src="${fu.pic||DEFAULT_IMAGE}" style="width:36px;height:36px;border-radius:6px;object-fit:cover" alt="${fu.name}'s picture" onclick="openImageViewer('${fu.pic}')"/><div><strong>${fu.name}</strong></div>`;
       el.onclick = () => openChatWith(fid);
       cont.appendChild(el);
     }
   });
 }
 
-function openChatWith(uid) {
+function openChatWith(uid){
   document.getElementById('chatWindow').classList.remove('hidden');
-  const fu = store.users.find(u => u.id === uid);
-  document.getElementById('chatWith').textContent = translations[currentLang].chatWith + (fu ? fu.name : 'User');
+  const fu = store.users.find(u=>u.id===uid);
+  document.getElementById('chatWith').textContent = translations[currentLang].chatWith+(fu?fu.name:'User');
   document.getElementById('chatMessages').innerHTML = '';
   const id = chatId(currentUser.id, uid);
   const conv = store.chats[id] || [];
-  conv.forEach(m => {
-    const p = document.createElement('div');
-    p.innerHTML = `<div style="font-size:13px"><strong>${(store.users.find(u => u.id === m.from) || { name: translations[currentLang].you }).name}</strong> <span class="small muted">${new Date(m.t).toLocaleString()}</span></div><div>${escapeHtml(m.text)}</div>`;
+  conv.forEach(m=>{
+    const p = document.createElement('div'); p.innerHTML = `<div style="font-size:13px"><strong>${(store.users.find(u=>u.id===m.from)||{name:translations[currentLang].you}).name}</strong> <span class="small muted">${new Date(m.t).toLocaleString()}</span></div><div>${escapeHtml(m.text)}</div>`;
     document.getElementById('chatMessages').appendChild(p);
   });
   document.getElementById('chatWindow').dataset.with = uid;
 }
 
-async function sendChat() {
-  showLoading();
-  try {
-    const txt = sanitizeInput(document.getElementById('chatMsg').value.trim());
-    if (!txt) return;
-    const to = document.getElementById('chatWindow').dataset.with;
-    if (!to) {
-      showError('postError', translations[currentLang].selectFriend);
-      return;
-    }
-    const id = chatId(currentUser.id, to);
-    if (!store.chats[id]) store.chats[id] = [];
-    store.chats[id].push({ from: currentUser.id, to, text: txt, t: Date.now() });
-    await saveDataToLocalStorage(currentUser.id);
-    document.getElementById('chatMsg').value = '';
-    openChatWith(to);
-    hideLoading();
-  } catch (err) {
-    console.error('Send chat error:', err);
-    showError('postError', translations[currentLang].genericError);
-    hideLoading();
-  }
+function sendChat(){
+  const txt = sanitizeInput(document.getElementById('chatMsg').value.trim());
+  if(!txt) return;
+  const to = document.getElementById('chatWindow').dataset.with;
+  if(!to) return alert(translations[currentLang].selectFriend);
+  const id = chatId(currentUser.id, to);
+  if(!store.chats[id]) store.chats[id]=[];
+  store.chats[id].push({ from: currentUser.id, to, text: txt, t: Date.now() });
+  persist();
+  document.getElementById('chatMsg').value='';
+  openChatWith(to);
 }
+
+/* ---------------------------
+  Helpers
+---------------------------*/
+function logout(){
+  currentUser = null;
+  document.getElementById('mainNav').style.display='none';
+  showSection('loginPanel');
+}
+
+function escapeHtml(str=''){ return String(str).replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[s]) }
+
+const DEFAULT_IMAGE = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#bbb" font-size="14">No Image</text></svg>`
+);
 
 /* ---------------------------
   Language
@@ -1317,7 +1059,6 @@ const translations = {
     chat: 'চ্যাট',
     notifications: 'নোটিফিকেশন',
     logout: 'লগআউট',
-    admin: 'অ্যাডমিন',
     fillAllFields: 'সমস্ত ক্ষেত্র পূরণ করুন',
     invalidEmail: 'বৈধ ইমেইল প্রবেশ করান',
     passwordTooShort: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে',
@@ -1357,15 +1098,8 @@ const translations = {
     unfriended: 'আনফ্রেন্ড করা হয়েছে',
     saved: 'সংরক্ষিত',
     notSet: 'নির্ধারিত নয়',
-    uploadFailed: 'আপলোড ব্যর্থ হয়েছে',
-    genericError: 'কিছু ভুল হয়েছে। আবার চেষ্টা করুন।',
-    profilePicUploaded: 'প্রোফাইল ছবি আপলোড সফল',
-    galleryUploaded: 'গ্যালারি ছবি আপলোড সফল',
-    postCreated: 'পোস্ট তৈরি সফল',
-    dataDeleted: 'আপনার ডাটা ডিলিট করা হয়েছে',
-    adminAccessDenied: 'অননুমোদিত অ্যাক্সেস',
-    userDeleted: 'ইউজার ডিলিট করা হয়েছে',
-    accountBlocked: 'আপনার অ্যাকাউন্ট ব্লক বা ডিলিট করা হয়েছে'
+    updatedProfilePic: 'নতুন প্রোফাইল ছবি আপডেট করেছেন',
+    confirmUnfriend: 'আপনি কি নিশ্চিতভাবে আনফ্রেন্ড করতে চান?'
   },
   en: {
     login: 'Login',
@@ -1378,15 +1112,14 @@ const translations = {
     chat: 'Chat',
     notifications: 'Notifications',
     logout: 'Logout',
-    admin: 'Admin',
     fillAllFields: 'Please fill all fields',
     invalidEmail: 'Enter a valid email',
     passwordTooShort: 'Password must be at least 6 characters',
     emailExists: 'Email already registered',
-    signupSuccess: 'Signup successful! Now login.',
+    signupSuccess: 'Registration successful! Please login.',
     invalidCredentials: 'Invalid email or password',
-    emailNotFound: 'Email not found',
-    passwordResetSuccess: 'Password reset successful! Now login.',
+    emailNotFound: 'Email not registered',
+    passwordResetSuccess: 'Password reset successful! Please login.',
     show: 'Show',
     hide: 'Hide',
     friends: 'Friends',
@@ -1418,40 +1151,48 @@ const translations = {
     unfriended: 'Unfriended',
     saved: 'Saved',
     notSet: 'Not set',
-    uploadFailed: 'Upload failed',
-    genericError: 'Something went wrong. Please try again.',
-    profilePicUploaded: 'Profile picture uploaded successfully',
-    galleryUploaded: 'Gallery images uploaded successfully',
-    postCreated: 'Post created successfully',
-    dataDeleted: 'Your data has been deleted',
-    adminAccessDenied: 'Unauthorized access',
-    userDeleted: 'User deleted successfully',
-    accountBlocked: 'Your account has been blocked or deleted'
+    updatedProfilePic: 'updated their profile picture',
+    confirmUnfriend: 'Are you sure you want to unfriend?'
   }
 };
 
-function setLanguage(lang) {
-  if (!translations[lang]) lang = 'bn';
+function setLanguage(lang){
+  if(!translations[lang]) lang = 'bn';
   currentLang = lang;
   const t = translations[lang];
   document.getElementById('loginTitle').textContent = t.login;
   document.getElementById('signupTitle').textContent = t.signup;
   document.getElementById('forgotTitle').textContent = t.forgot;
-  document.getElementById('navProfile').dataset.tooltip = t.profile;
-  document.getElementById('navBrowse').dataset.tooltip = t.users;
-  document.getElementById('navRequests').dataset.tooltip = t.requests;
-  document.getElementById('navFeed').dataset.tooltip = t.feed;
-  document.getElementById('navChat').dataset.tooltip = t.chat;
-  document.getElementById('navNotifications').dataset.tooltip = t.notifications;
-  document.getElementById('navAdmin').dataset.tooltip = t.admin;
-  document.getElementById('navLogout').dataset.tooltip = t.logout;
-  renderMyProfile();
+  document.getElementById('navProfile').title = t.profile;
+  document.getElementById('navBrowse').title = t.users;
+  document.getElementById('navRequests').title = t.requests;
+  document.getElementById('navFeed').title = t.feed;
+  document.getElementById('navChat').title = t.chat;
+  document.getElementById('navNotifications').title = t.notifications;
+  document.getElementById('navLogout').title = t.logout;
+  document.getElementById('newPostText').placeholder = t.writeComment;
   renderUsersList();
   renderRequests();
   renderFeed();
-  renderChatContacts();
   renderNotifications();
+  if(document.getElementById('chatWindow').dataset.with){
+    openChatWith(document.getElementById('chatWindow').dataset.with);
+  }
 }
+
+/* ---------------------------
+  Initial UI state & keyboard navigation
+---------------------------*/
+(function init(){
+  ['signupPanel','forgotPanel','profilePanel','browsePanel','requestsPanel','feedPanel','chatPanel','notificationsPanel'].forEach(s=>document.getElementById(s).style.display='none');
+  setLanguage('bn');
+  document.getElementById('loginEmail').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('regEmail').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') doSignup();
+  });
+})();
 </script>
 </body>
 </html>
