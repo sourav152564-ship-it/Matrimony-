@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="bn">
 <head>
@@ -283,6 +284,10 @@
       z-index: 1000;
       background: #f0f2f5;
       margin: 0;
+      display: none;
+    }
+    #chatPanel.active {
+      display: block;
     }
     #chatPanel .card {
       height: calc(100% - 60px);
@@ -358,6 +363,12 @@
     }
     .chat-input button:hover {
       background: #e0435f;
+    }
+
+    /* Post caption input */
+    #postCaptionInput {
+      margin-top: 8px;
+      display: none;
     }
 
     @media(max-width:600px) {
@@ -541,6 +552,7 @@
         <textarea id="newPostText" placeholder="What's on your mind?" aria-label="Write a post"></textarea>
         <button class="btn-primary" onclick="openCloudinaryUpload('post')" aria-label="Add post media">Upload Media</button>
         <div id="postPreview" class="gallery"></div>
+        <textarea id="postCaptionInput" placeholder="Add a caption..." aria-label="Add post caption" style="display:none"></textarea>
         <div class="row">
           <button class="btn-primary" onclick="createPost()" aria-label="Create post">Post</button>
           <button class="btn-outline" onclick="clearPost()" aria-label="Clear post">Clear</button>
@@ -551,10 +563,13 @@
 
     <!-- CHAT -->
     <section id="chatPanel">
-      <h3 id="chatHeader" style="display:none"></h3>
+      <div id="chatHeader" class="card" style="padding:10px;display:flex;align-items:center;gap:10px">
+        <button class="btn-outline" onclick="showSection('chatPanel')" aria-label="Back to contacts"><i class="fas fa-arrow-left"></i></button>
+        <img id="chatWithAvatar" src="" style="width:40px;height:40px;border-radius:50%;object-fit:cover" alt="Chat user avatar">
+        <h3 id="chatWithName"></h3>
+      </div>
       <div id="chatContacts" class="friends-list card"></div>
       <div id="chatWindow" class="card hidden">
-        <div id="chatWith" class="small muted" style="padding:10px;border-bottom:1px solid #ddd"></div>
         <div id="chatMessages"></div>
         <div class="chat-input">
           <input id="chatMsg" placeholder="Type a message..." aria-label="Type a message">
@@ -573,7 +588,7 @@
 ---------------------------*/
 function uid(prefix='id'){ return prefix+Math.random().toString(36).slice(2,9) }
 
-// Simulated cloud storage (replace with Cloudinary Admin API in production)
+// Simulated cloud storage (replace with Cloudinary Admin API or backend database in production)
 let store = {
   users: null,
   posts: null,
@@ -598,15 +613,17 @@ if (!store.users) {
 /* ---------------------------
   Cloudinary Upload
 ---------------------------*/
-const CLOUDINARY_CLOUD_NAME = 'ddnswi7ge';
-const CLOUDINARY_UPLOAD_PRESET = 'matrimony';
+const CLOUDINARY_CLOUD_NAME = 'ddnswi7ge'; // Replace with your Cloudinary cloud name
+const CLOUDINARY_UPLOAD_PRESET = 'matrimony'; // Replace with your unsigned upload preset
 let pendingUploads = [];
+let uploadType = null;
 
 function openCloudinaryUpload(type) {
   if (!currentUser) {
     alert(translations[currentLang].loginFirst);
     return;
   }
+  uploadType = type;
   pendingUploads = [];
   const isChat = type === 'chat';
   const options = {
@@ -620,7 +637,8 @@ function openCloudinaryUpload(type) {
     showAdvancedOptions: false,
     showCrop: type === 'profile',
     maxFileSize: isChat || type === 'post' ? 10000000 : 5000000, // 10MB for chat/post, 5MB for others
-    resourceType: isChat || type === 'post' ? 'auto' : 'image'
+    resourceType: isChat || type === 'post' ? 'auto' : 'image',
+    clientAllowedFormats: isChat || type === 'post' ? ['jpg', 'png', 'mp4'] : ['jpg', 'png']
   };
 
   const myWidget = window.cloudinary.createUploadWidget(
@@ -630,12 +648,9 @@ function openCloudinaryUpload(type) {
         const url = result.info.secure_url;
         const resourceType = result.info.resource_type;
         pendingUploads.push({ url, type: resourceType });
-        if (type === 'profile' && pendingUploads.length >= 1) {
-          handleUploadComplete(type, pendingUploads);
-        }
       } else if (error) {
         console.error('Upload error:', error);
-        alert('Upload failed: ' + error.message);
+        alert('Upload failed: ' + (error.message || 'Unknown error'));
       }
     }
   );
@@ -665,13 +680,18 @@ function handleUploadComplete(type, uploads) {
       };
       store.posts.unshift(post);
     }
+    // Simulate Cloudinary metadata update
+    console.log('Updating profile picture in cloud:', { userId: currentUser.id, pic: url });
     renderMyProfile();
     renderFeed();
     toggleEditMe();
     alert(translations[currentLang].saved);
   } else if (type === 'gallery') {
     currentUser.gallery = currentUser.gallery.concat(uploads.map(u => u.url));
+    // Simulate Cloudinary metadata update
+    console.log('Updating gallery in cloud:', { userId: currentUser.id, gallery: currentUser.gallery });
     renderMyProfile();
+    alert(translations[currentLang].saved);
   } else if (type === 'post') {
     window.pendingPostMedia = uploads;
     const preview = document.getElementById('postPreview');
@@ -683,6 +703,7 @@ function handleUploadComplete(type, uploads) {
       el.onclick = () => openMediaViewer(media.url, media.type);
       preview.appendChild(el);
     });
+    document.getElementById('postCaptionInput').style.display = 'block';
   } else if (type === 'chat') {
     const to = document.getElementById('chatWindow').dataset.with;
     if (!to) return alert(translations[currentLang].selectFriend);
@@ -738,13 +759,21 @@ let currentUser = null;
 
 function showSection(id) {
   ['loginPanel', 'signupPanel', 'forgotPanel', 'profilePanel', 'browsePanel', 'requestsPanel', 'feedPanel', 'chatPanel', 'notificationsPanel'].forEach(s => {
-    document.getElementById(s).style.display = 'none';
+    const panel = document.getElementById(s);
+    panel.style.display = 'none';
+    if (s === 'chatPanel') panel.classList.remove('active');
   });
   ['loginError', 'signupError', 'forgotError', 'loginMessage'].forEach(e => {
     document.getElementById(e).style.display = 'none';
     document.getElementById(e).textContent = '';
   });
-  document.getElementById(id).style.display = 'block';
+  const target = document.getElementById(id);
+  target.style.display = 'block';
+  if (id === 'chatPanel') {
+    target.classList.add('active');
+    document.getElementById('chatHeader').style.display = 'none';
+    document.getElementById('chatWindow').classList.add('hidden');
+  }
   if (id !== 'browsePanel') document.getElementById('viewProfile').classList.add('hidden');
 }
 
@@ -804,8 +833,25 @@ function doSignup() {
       return;
     }
 
-    const newU = { id: uid('u'), name, email, pass: hashPassword(pass), location: '', age: '', gender: '', occupation: '', pic: '', gallery: [], friends: [], friendRequests: [], sentRequests: [] };
-    store.users.push(newU);
+    const newUser = {
+      id: uid('u'),
+      name,
+      email,
+      pass: hashPassword(pass),
+      location: '',
+      age: '',
+      gender: '',
+      occupation: '',
+      pic: '',
+      gallery: [],
+      friends: [],
+      friendRequests: [],
+      sentRequests: []
+    };
+    store.users.push(newUser);
+
+    // Simulate Cloudinary metadata storage (replace with backend API call)
+    console.log('Storing user data in cloud:', newUser);
 
     document.getElementById('regName').value = '';
     document.getElementById('regEmail').value = '';
@@ -883,6 +929,9 @@ function resetPassword() {
 
     user.pass = hashPassword(newPass);
 
+    // Simulate Cloudinary metadata update (replace with backend API call)
+    console.log('Updating password in cloud for:', email);
+
     document.getElementById('forgotEmail').value = '';
     document.getElementById('forgotNewPass').value = '';
     document.querySelector('#forgotNewPass + .password-toggle').textContent = translations[currentLang].show;
@@ -959,6 +1008,10 @@ function saveMe() {
     currentUser.age = document.getElementById('meAgeInput').value || currentUser.age;
     currentUser.gender = document.getElementById('meGenderInput').value || currentUser.gender;
     currentUser.occupation = sanitizeInput(document.getElementById('meOccupationInput').value || currentUser.occupation);
+
+    // Simulate Cloudinary metadata update
+    console.log('Updating profile in cloud:', currentUser);
+
     renderMyProfile();
     toggleEditMe();
     alert(translations[currentLang].saved);
@@ -1235,9 +1288,14 @@ const REACTS = {
 function createPost() {
   if (!currentUser) return alert(translations[currentLang].loginFirst);
   const text = sanitizeInput(document.getElementById('newPostText').value.trim());
+  const caption = sanitizeInput(document.getElementById('postCaptionInput').value.trim());
   const media = window.pendingPostMedia || [];
-  const post = { id: uid('p'), userId: currentUser.id, text, media, reactions: {}, comments: [] };
+  if (!text && !caption && media.length === 0) return alert(translations[currentLang].fillAllFields);
+  const finalText = (text + ' ' + caption).trim();
+  const post = { id: uid('p'), userId: currentUser.id, text: finalText, media, reactions: {}, comments: [] };
   store.posts.unshift(post);
+  // Simulate Cloudinary metadata update
+  console.log('Storing post in cloud:', post);
   renderFeed();
   clearPost();
 }
@@ -1245,6 +1303,8 @@ function createPost() {
 function clearPost() {
   document.getElementById('newPostText').value = '';
   document.getElementById('postPreview').innerHTML = '';
+  document.getElementById('postCaptionInput').value = '';
+  document.getElementById('postCaptionInput').style.display = 'none';
   window.pendingPostMedia = [];
 }
 
@@ -1400,8 +1460,11 @@ function renderChatContacts() {
 
 function openChatWith(uid) {
   document.getElementById('chatWindow').classList.remove('hidden');
+  document.getElementById('chatHeader').style.display = 'flex';
+  document.getElementById('chatContacts').classList.add('hidden');
   const fu = store.users.find(u => u.id === uid);
-  document.getElementById('chatWith').textContent = translations[currentLang].chatWith + (fu ? fu.name : 'User');
+  document.getElementById('chatWithName').textContent = fu ? fu.name : 'User';
+  document.getElementById('chatWithAvatar').src = fu && fu.pic ? fu.pic : DEFAULT_IMAGE;
   document.getElementById('chatMessages').innerHTML = '';
   const id = chatId(currentUser.id, uid);
   const conv = store.chats[id] || [];
@@ -1556,7 +1619,7 @@ const translations = {
     postNotFound: 'Post not found',
     chatWith: 'Chat with ',
     you: 'You',
-    selectFriend: 'Select a friend',
+    selectFriend: 'Select a friend to chat',
     requestSent: 'Friend request sent',
     requestCancelled: 'Request cancelled',
     friendAdded: 'Friend added',
@@ -1566,46 +1629,262 @@ const translations = {
     notSet: 'Not set',
     updatedProfilePic: 'updated their profile picture',
     confirmUnfriend: 'Are you sure you want to unfriend?'
+  },
+  hi: {
+    login: 'लॉगिन',
+    signup: 'साइनअप',
+    forgot: 'पासवर्ड रीसेट',
+    profile: 'प्रोफाइल',
+    users: 'उपयोगकर्ता',
+    requests: 'अनुरोध',
+    feed: 'न्यूज़फीड',
+    chat: 'चैट',
+    notifications: 'सूचनाएँ',
+    logout: 'लॉगआउट',
+    fillAllFields: 'कृपया सभी क्षेत्र भरें',
+    invalidEmail: 'वैध ईमेल दर्ज करें',
+    passwordTooShort: 'पासवर्ड कम से कम 6 अक्षरों का होना चाहिए',
+    emailExists: 'ईमेल पहले से पंजीकृत है',
+    signupSuccess: 'पंजीकरण सफल! कृपया लॉगिन करें।',
+    invalidCredentials: 'अमान्य ईमेल या पासवर्ड',
+    emailNotFound: 'ईमेल पंजीकृत नहीं है',
+    passwordResetSuccess: 'पासवर्ड रीसेट सफल! कृपया लॉगिन करें।',
+    show: 'दिखाएँ',
+    hide: 'छिपाएँ',
+    friends: 'मित्र',
+    cancelRequest: 'अनुरोध रद्द करें',
+    sendRequest: 'अनुरोध भेजें',
+    thisIsYou: 'यह आप हैं',
+    unfriend: 'अनफ्रेंड',
+    acceptRequest: 'अनुरोध स्वीकार करें',
+    viewGallery: 'गैलरी देखें',
+    gallery: 'गैलरी',
+    friendRequestText: 'आपका मित्र बनना चाहता है',
+    accept: 'स्वीकार',
+    decline: 'अस्वीकार',
+    to: 'को:',
+    cancel: 'रद्द करें',
+    reactions: 'प्रतिक्रियाएँ',
+    comment: 'टिप्पणी',
+    reply: 'उत्तर',
+    writeComment: 'टिप्पणी लिखें...',
+    loginFirst: 'कृपया पहले लॉगिन करें',
+    postNotFound: 'पोस्ट नहीं मिला',
+    chatWith: 'के साथ चैट करें ',
+    you: 'आप',
+    selectFriend: 'चैट के लिए मित्र चुनें',
+    requestSent: 'मित्र अनुरोध भेजा गया',
+    requestCancelled: 'अनुरोध रद्द किया गया',
+    friendAdded: 'मित्र जोड़ा गया',
+    requestDeclined: 'अनुरोध अस्वीकार किया गया',
+    unfriended: 'अनफ्रेंड किया गया',
+    saved: 'सहेजा गया',
+    notSet: 'निर्धारित नहीं',
+    updatedProfilePic: 'ने अपनी प्रोफाइल तस्वीर अपडेट की',
+    confirmUnfriend: 'क्या आप वाकई अनफ्रेंड करना चाहते हैं?'
+  },
+  ur: {
+    login: 'لاگ ان',
+    signup: 'سائن اپ',
+    forgot: 'پاس ورڈ ری سیٹ',
+    profile: 'پروفائل',
+    users: 'صارفین',
+    requests: 'درخواستیں',
+    feed: 'نیوز فیڈ',
+    chat: 'چیٹ',
+    notifications: 'اطلاعات',
+    logout: 'لاگ آؤٹ',
+    fillAllFields: 'براہ کرم تمام فیلڈز پُر کریں',
+    invalidEmail: 'درست ای میل درج کریں',
+    passwordTooShort: 'پاس ورڈ کم از کم 6 حروف کا ہونا چاہیے',
+    emailExists: 'ای میل پہلے سے رجسٹرڈ ہے',
+    signupSuccess: 'رجسٹریشن کامیاب! براہ کرم لاگ ان کریں۔',
+    invalidCredentials: 'غلط ای میل یا پاس ورڈ',
+    emailNotFound: 'ای میل رجسٹرڈ نہیں ہے',
+    passwordResetSuccess: 'پاس ورڈ ری سیٹ کامیاب! براہ کرم لاگ ان کریں۔',
+    show: 'دکھائیں',
+    hide: 'چھپائیں',
+    friends: 'دوست',
+    cancelRequest: 'درخواست منسوخ کریں',
+    sendRequest: 'درخواست بھیجیں',
+    thisIsYou: 'یہ آپ ہیں',
+    unfriend: 'انفرینڈ',
+    acceptRequest: 'درخواست قبول کریں',
+    viewGallery: 'گیلری دیکھیں',
+    gallery: 'گیلری',
+    friendRequestText: 'آپ کا دوست بننا چاہتا ہے',
+    accept: 'قبول',
+    decline: 'مسترد',
+    to: 'کے لیے:',
+    cancel: 'منسوخ',
+    reactions: 'ردعمل',
+    comment: 'تبصرہ',
+    reply: 'جواب',
+    writeComment: 'تبصرہ لکھیں...',
+    loginFirst: 'براہ کرم پہلے لاگ ان کریں',
+    postNotFound: 'پوسٹ نہیں ملی',
+    chatWith: 'کے ساتھ چیٹ کریں ',
+    you: 'آپ',
+    selectFriend: 'چیٹ کے لیے دوست منتخب کریں',
+    requestSent: 'دوست کی درخواست بھیجی گئی',
+    requestCancelled: 'درخواست منسوخ کر دی گئی',
+    friendAdded: 'دوست شامل کیا گیا',
+    requestDeclined: 'درخواست مسترد کر دی گئی',
+    unfriended: 'انفرینڈ کر دیا گیا',
+    saved: 'محفوظ کیا گیا',
+    notSet: 'سیٹ نہیں کیا گیا',
+    updatedProfilePic: 'نے اپنی پروفائل تصویر اپ ڈیٹ کی',
+    confirmUnfriend: 'کیا آپ واقعی انفرینڈ کرنا چاہتے ہیں؟'
+  },
+  ar: {
+    login: 'تسجيل الدخول',
+    signup: 'التسجيل',
+    forgot: 'إعادة تعيين كلمة المرور',
+    profile: 'الملف الشخصي',
+    users: 'المستخدمون',
+    requests: 'الطلبات',
+    feed: 'الأخبار',
+    chat: 'الدردشة',
+    notifications: 'الإشعارات',
+    logout: 'تسجيل الخروج',
+    fillAllFields: 'يرجى ملء جميع الحقول',
+    invalidEmail: 'أدخل بريدًا إلكترونيًا صالحًا',
+    passwordTooShort: 'يجب أن تكون كلمة المرور 6 أحرف على الأقل',
+    emailExists: 'البريد الإلكتروني مسجل بالفعل',
+    signupSuccess: 'التسجيل ناجح! يرجى تسجيل الدخول.',
+    invalidCredentials: 'بريد إلكتروني أو كلمة مرور غير صحيحة',
+    emailNotFound: 'البريد الإلكتروني غير مسجل',
+    passwordResetSuccess: 'إعادة تعيين كلمة المرور ناجحة! يرجى تسجيل الدخول.',
+    show: 'إظهار',
+    hide: 'إخفاء',
+    friends: 'الأصدقاء',
+    cancelRequest: 'إلغاء الطلب',
+    sendRequest: 'إرسال طلب',
+    thisIsYou: 'هذا أنت',
+    unfriend: 'إلغاء الصداقة',
+    acceptRequest: 'قبول الطلب',
+    viewGallery: 'عرض المعرض',
+    gallery: 'المعرض',
+    friendRequestText: 'يريد أن يكون صديقك',
+    accept: 'قبول',
+    decline: 'رفض',
+    to: 'إلى:',
+    cancel: 'إلغاء',
+    reactions: 'التفاعلات',
+    comment: 'تعليق',
+    reply: 'رد',
+    writeComment: 'اكتب تعليقًا...',
+    loginFirst: 'يرجى تسجيل الدخول أولاً',
+    postNotFound: 'المنشور غير موجود',
+    chatWith: 'الدردشة مع ',
+    you: 'أنت',
+    selectFriend: 'اختر صديقًا للدردشة',
+    requestSent: 'تم إرسال طلب الصداقة',
+    requestCancelled: 'تم إلغاء الطلب',
+    friendAdded: 'تم إضافة الصديق',
+    requestDeclined: 'تم رفض الطلب',
+    unfriended: 'تم إلغاء الصداقة',
+    saved: 'تم الحفظ',
+    notSet: 'غير محدد',
+    updatedProfilePic: 'قام بتحديث صورة الملف الشخصي',
+    confirmUnfriend: 'هل أنت متأكد أنك تريد إلغاء الصداقة؟'
+  },
+  fr: {
+    login: 'Connexion',
+    signup: 'Inscription',
+    forgot: 'Réinitialiser le mot de passe',
+    profile: 'Profil',
+    users: 'Utilisateurs',
+    requests: 'Demandes',
+    feed: 'Fil d'actualité',
+    chat: 'Chat',
+    notifications: 'Notifications',
+    logout: 'Déconnexion',
+    fillAllFields: 'Veuillez remplir tous les champs',
+    invalidEmail: 'Entrez un email valide',
+    passwordTooShort: 'Le mot de passe doit comporter au moins 6 caractères',
+    emailExists: 'Email déjà enregistré',
+    signupSuccess: 'Inscription réussie ! Veuillez vous connecter.',
+    invalidCredentials: 'Email ou mot de passe incorrect',
+    emailNotFound: 'Email non enregistré',
+    passwordResetSuccess: 'Réinitialisation du mot de passe réussie ! Veuillez vous connecter.',
+    show: 'Afficher',
+    hide: 'Masquer',
+    friends: 'Amis',
+    cancelRequest: 'Annuler la demande',
+    sendRequest: 'Envoyer une demande',
+    thisIsYou: 'C'est vous',
+    unfriend: 'Retirer des amis',
+    acceptRequest: 'Accepter la demande',
+    viewGallery: 'Voir la galerie',
+    gallery: 'Galerie',
+    friendRequestText: 'veut être votre ami',
+    accept: 'Accepter',
+    decline: 'Refuser',
+    to: 'À :',
+    cancel: 'Annuler',
+    reactions: 'Réactions',
+    comment: 'Commentaire',
+    reply: 'Répondre',
+    writeComment: 'Écrire un commentaire...',
+    loginFirst: 'Veuillez vous connecter d'abord',
+    postNotFound: 'Publication introuvable',
+    chatWith: 'Discuter avec ',
+    you: 'Vous',
+    selectFriend: 'Sélectionnez un ami pour discuter',
+    requestSent: 'Demande d’ami envoyée',
+    requestCancelled: 'Demande annulée',
+    friendAdded: 'Ami ajouté',
+    requestDeclined: 'Demande refusée',
+    unfriended: 'Retiré des amis',
+    saved: 'Enregistré',
+    notSet: 'Non défini',
+    updatedProfilePic: 'a mis à jour sa photo de profil',
+    confirmUnfriend: 'Êtes-vous sûr de vouloir retirer cet ami ?'
   }
 };
 
 function setLanguage(lang) {
-  if (!translations[lang]) lang = 'bn';
   currentLang = lang;
-  const t = translations[lang];
-  document.getElementById('loginTitle').textContent = t.login;
-  document.getElementById('signupTitle').textContent = t.signup;
-  document.getElementById('forgotTitle').textContent = t.forgot;
-  document.getElementById('navProfile').title = t.profile;
-  document.getElementById('navBrowse').title = t.users;
-  document.getElementById('navRequests').title = t.requests;
-  document.getElementById('navFeed').title = t.feed;
-  document.getElementById('navChat').title = t.chat;
-  document.getElementById('navNotifications').title = t.notifications;
-  document.getElementById('navLogout').title = t.logout;
-  document.getElementById('newPostText').placeholder = t.writeComment;
+  document.getElementById('loginTitle').textContent = translations[lang].login;
+  document.getElementById('signupTitle').textContent = translations[lang].signup;
+  document.getElementById('forgotTitle').textContent = translations[lang].forgot;
+  document.getElementById('navProfile').title = translations[lang].profile;
+  document.getElementById('navBrowse').title = translations[lang].users;
+  document.getElementById('navRequests').title = translations[lang].requests;
+  document.getElementById('navFeed').title = translations[lang].feed;
+  document.getElementById('navChat').title = translations[lang].chat;
+  document.getElementById('navNotifications').title = translations[lang].notifications;
+  document.getElementById('navLogout').title = translations[lang].logout;
+  document.getElementById('loginEmail').placeholder = translations[lang].invalidEmail.split(' ')[translations[lang].invalidEmail.split(' ').length - 1];
+  document.getElementById('loginPass').placeholder = translations[lang].passwordTooShort.split(' ').slice(0, 2).join(' ');
+  document.getElementById('regName').placeholder = translations[lang].fillAllFields.split(' ').slice(-2).join(' ');
+  document.getElementById('regEmail').placeholder = translations[lang].invalidEmail.split(' ')[translations[lang].invalidEmail.split(' ').length - 1];
+  document.getElementById('regPass').placeholder = translations[lang].passwordTooShort.split(' ').slice(0, 2).join(' ');
+  document.getElementById('forgotEmail').placeholder = translations[lang].invalidEmail.split(' ')[translations[lang].invalidEmail.split(' ').length - 1];
+  document.getElementById('forgotNewPass').placeholder = translations[lang].passwordTooShort.split(' ').slice(0, 2).join(' ');
+  document.getElementById('searchName').placeholder = translations[lang].fillAllFields.split(' ').slice(-2).join(' ');
+  document.getElementById('newPostText').placeholder = translations[lang].writeComment.split(' ').slice(0, -1).join(' ');
+  document.getElementById('postCaptionInput').placeholder = translations[lang].writeComment;
+  document.getElementById('chatMsg').placeholder = translations[lang].writeComment.split(' ').slice(0, -1).join(' ');
+  renderMyProfile();
   renderUsersList();
   renderRequests();
   renderFeed();
+  renderChatContacts();
   renderNotifications();
-  if (document.getElementById('chatWindow').dataset.with) {
-    openChatWith(document.getElementById('chatWindow').dataset.with);
-  }
 }
 
 /* ---------------------------
-  Initial UI state & keyboard navigation
+  Initialize
 ---------------------------*/
-(function init() {
-  ['signupPanel', 'forgotPanel', 'profilePanel', 'browsePanel', 'requestsPanel', 'feedPanel', 'chatPanel', 'notificationsPanel'].forEach(s => document.getElementById(s).style.display = 'none');
-  setLanguage('bn');
-  document.getElementById('loginEmail').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') doLogin();
-  });
-  document.getElementById('regEmail').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') doSignup();
-  });
-})();
+setLanguage(currentLang);
+
+// Auto-login for testing (remove in production)
+if (store.users.length > 0) {
+  currentUser = store.users[0];
+  onLogin();
+}
 </script>
 </body>
 </html>
