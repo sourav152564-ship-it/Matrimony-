@@ -2,152 +2,94 @@
 <html lang="bn">
 <head>
   <meta charset="utf-8" />
-  <title>Matrimonial - Social Prototype</title>
+  <title>Matrimonial Demo</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- Add CryptoJS for password hashing -->
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js?59"></script>
+  <!-- CryptoJS for password hashing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-  <!-- Add Font Awesome for icons -->
+  <!-- Font Awesome for icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Add Cloudinary Upload Widget JS -->
-  <script src="https://upload-widget.cloudinary.com/latest/global/all.js" type="text/javascript"></script>
+  <!-- Firebase (optional, for image storage) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js"></script>
   <style>
-    :root{--primary:#ff4d6d;--muted:#777}
-    body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f4f6f8;color:#222}
-    header{background:var(--primary);color:#fff;padding:10px 12px;display:flex;align-items:center;justify-content:space-between}
-    header h1{margin:0;font-size:18px}
-    header .right{display:flex;gap:8px;align-items:center}
-    nav{background:#fff;padding:6px;display:flex;gap:6px;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.06);display:none}
-    nav button{background:var(--primary);color:#fff;border:0;padding:6px;border-radius:50%;font-size:13px;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center}
-    nav button i{font-size:16px}
-    .container{padding:12px;max-width:980px;margin:14px auto}
-    section{display:none}
-    .card{background:#fff;padding:12px;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.04);margin-bottom:12px}
-    input,textarea,select{width:100%;padding:8px;margin:6px 0;border:1px solid #ddd;border-radius:6px;box-sizing:border-box}
-    .row{display:flex;gap:10px}
-    .col{flex:1}
-    img.profile-thumb{width:80px;height:80px;border-radius:50%;object-fit:cover}
-    .small{font-size:13px;color:var(--muted)}
-    .gallery img{width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin:4px;cursor:pointer;loading:lazy}
-    .post-actions{display:flex;gap:8px;align-items:center;margin-top:8px}
-    .react-btn{background:#fafafa;border:1px solid #eee;padding:6px;border-radius:6px;cursor:pointer}
-    .comment{background:#fbfbfb;padding:8px;border-radius:8px;margin-top:6px}
-    .reply{margin-left:12px;background:#fff;padding:8px;border-radius:8px;border-left:3px solid #eee}
-    .friends-list{display:flex;flex-wrap:wrap;gap:8px}
-    .friend-pill{background:#fff;padding:6px 8px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex;align-items:center;gap:8px}
-    .btn-outline{background:#fff;color:var(--primary);border:1px solid var(--primary)}
-    .hidden{display:none}
-    .muted{color:var(--muted)}
-    .center{text-align:center}
-    .error-message{color:#d32f2f;font-size:13px;margin:4px 0;padding:6px;border-radius:4px;background:#ffebee;display:none}
-    .success-message{color:#2e7d32;font-size:13px;margin:4px 0;padding:6px;border-radius:4px;background:#e8f5e9;display:none}
-    .password-toggle{cursor:pointer;color:var(--primary);font-size:12px;margin-top:2px}
-    #loading{background:#fff;padding:10px;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,.04);text-align:center;display:none}
-    footer{padding:12px;text-align:center;color:var(--muted);font-size:13px}
-    
-    /* Full-screen image viewer */
-    #imageViewer{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:none;justify-content:center;align-items:center;z-index:1000}
-    #imageViewer img{max-width:90%;max-height:90%;object-fit:contain}
-    #imageViewer .controls{position:absolute;bottom:20px;display:flex;gap:10px}
-    #imageViewer button{background:#fff;border:none;padding:8px;border-radius:50%;cursor:pointer}
-    
-    /* Full-screen chat */
-    #chatPanel.fullscreen{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1000;background:#f4f6f8;margin:0}
-    #chatPanel.fullscreen .card{height:calc(100% - 60px);display:flex;flex-direction:column}
-    #chatPanel.fullscreen #chatMessages{flex:1;overflow:auto}
-    
-    @media(max-width:600px){
-      header h1{font-size:16px}
-      nav{overflow:auto;padding:8px}
-      .row{flex-direction:column}
-      .card{padding:10px}
-      .profile-thumb{width:60px;height:60px}
-      .gallery img{max-height:100vh;object-fit:cover}
+    :root { --primary: #ff4d6d; --muted: #777; }
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; color: #222; }
+    header { background: var(--primary); color: #fff; padding: 10px; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { margin: 0; font-size: 18px; }
+    nav { background: #fff; padding: 6px; display: flex; gap: 6px; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,.06); display: none; }
+    nav button { background: var(--primary); color: #fff; border: 0; padding: 6px; border-radius: 50%; font-size: 13px; cursor: pointer; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+    nav button i { font-size: 16px; }
+    .container { padding: 12px; max-width: 980px; margin: 14px auto; }
+    section { display: none; }
+    .card { background: #fff; padding: 12px; border-radius: 10px; box-shadow: 0 1px 6px rgba(0,0,0,.04); margin-bottom: 12px; }
+    input, textarea { width: 100%; padding: 8px; margin: 6px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+    .row { display: flex; gap: 10px; }
+    .col { flex: 1; }
+    img.profile-thumb { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; }
+    .small { font-size: 13px; color: var(--muted); }
+    .error-message { color: #d32f2f; font-size: 13px; margin: 4px 0; padding: 6px; border-radius: 4px; background: #ffebee; display: none; }
+    .success-message { color: #2e7d32; font-size: 13px; margin: 4px 0; padding: 6px; border-radius: 4px; background: #e8f5e9; display: none; }
+    .password-toggle { cursor: pointer; color: var(--primary); font-size: 12px; margin-top: 2px; }
+    #loading { background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,.04); text-align: center; display: none; }
+    footer { padding: 12px; text-align: center; color: var(--muted); font-size: 13px; }
+    @media(max-width:600px) {
+      header h1 { font-size: 16px; }
+      .row { flex-direction: column; }
+      .card { padding: 10px; }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>Matrimonial — Community</h1>
+    <h1>Matrimonial Demo</h1>
     <div class="right">
       <select id="languageSelector" onchange="setLanguage(this.value)" aria-label="Select Language">
         <option value="bn">বাংলা</option>
         <option value="en">English</option>
-        <option value="hi">हिन्दी</option>
-        <option value="ur">اردو</option>
-        <option value="ar">العربية</option>
-        <option value="fr">Français</option>
       </select>
     </div>
   </header>
 
   <nav id="mainNav">
     <button id="navProfile" onclick="showSection('profilePanel')" title="প্রোফাইল"><i class="fas fa-user"></i></button>
-    <button id="navBrowse" onclick="showSection('browsePanel')" title="ব্যবহারকারী"><i class="fas fa-users"></i></button>
-    <button id="navRequests" onclick="showSection('requestsPanel')" title="রিকোয়েস্ট"><i class="fas fa-handshake"></i></button>
     <button id="navFeed" onclick="showSection('feedPanel')" title="নিউজফিড"><i class="fas fa-newspaper"></i></button>
-    <button id="navChat" onclick="showSection('chatPanel')" title="চ্যাট"><i class="fas fa-comments"></i></button>
-    <button id="navNotifications" onclick="showSection('notificationsPanel')" title="নোটিফিকেশন"><i class="fas fa-bell"></i></button>
     <button id="navLogout" onclick="logout()" title="লগআউট"><i class="fas fa-sign-out-alt"></i></button>
   </nav>
 
   <div class="container">
-    <!-- Loading Indicator -->
     <div id="loading">Loading...</div>
 
-    <!-- Image Viewer -->
-    <div id="imageViewer">
-      <img id="viewerImage" src="" alt="Full-screen image">
-      <div class="controls">
-        <button onclick="closeImageViewer()" title="Close"><i class="fas fa-times"></i></button>
-        <button onclick="downloadImage()" title="Download"><i class="fas fa-download"></i></button>
-      </div>
-    </div>
-
-    <!-- AUTH: LOGIN -->
+    <!-- LOGIN -->
     <section id="loginPanel" class="card" style="display:block">
       <h2 id="loginTitle">লগইন করুন</h2>
       <div id="loginMessage" class="success-message"></div>
       <div id="loginError" class="error-message"></div>
-      <input id="loginEmail" type="email" placeholder="ইমেইল (example@domain.com)" required aria-label="Email">
+      <input id="loginEmail" type="email" placeholder="ইমেইল" required aria-label="Email">
       <div style="position:relative">
-        <input id="loginPass" type="password" placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" required aria-label="Password">
+        <input id="loginPass" type="password" placeholder="পাসওয়ার্ড" required aria-label="Password">
         <span class="password-toggle" onclick="togglePassword('loginPass', this)">দেখান</span>
       </div>
       <div class="row">
-        <button onclick="doLogin()" style="flex:1" aria-label="Login to your account">লগইন</button>
-        <button onclick="showSection('signupPanel')" class="btn-outline" style="flex:1" aria-label="Go to signup">সাইনআপ</button>
+        <button onclick="doLogin()" style="flex:1" aria-label="Login">লগইন</button>
+        <button onclick="showSection('signupPanel')" class="btn-outline" style="flex:1" aria-label="Signup">সাইনআপ</button>
       </div>
-      <p class="small center"><a href="#" onclick="showSection('forgotPanel')">পাসওয়ার্ড ভুলে গেছেন?</a></p>
     </section>
 
     <!-- SIGNUP -->
     <section id="signupPanel" class="card">
       <h2 id="signupTitle">সাইনআপ</h2>
       <div id="signupError" class="error-message"></div>
-      <input id="regName" placeholder="পুরো নাম" required aria-label="Full Name">
-      <input id="regEmail" type="email" placeholder="ইমেইল (example@domain.com)" required aria-label="Email">
+      <input id="regName" placeholder="নাম" required aria-label="Name">
+      <input id="regEmail" type="email" placeholder="ইমেইল" required aria-label="Email">
       <div style="position:relative">
-        <input id="regPass" type="password" placeholder="পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" required aria-label="Password">
+        <input id="regPass" type="password" placeholder="পাসওয়ার্ড" required aria-label="Password">
         <span class="password-toggle" onclick="togglePassword('regPass', this)">দেখান</span>
       </div>
       <div class="row">
-        <button onclick="doSignup()" style="flex:1" aria-label="Register account">নিবন্ধন</button>
-        <button onclick="showSection('loginPanel')" class="btn-outline" style="flex:1" aria-label="Back to login">ফিরে যান</button>
-      </div>
-    </section>
-
-    <!-- FORGOT -->
-    <section id="forgotPanel" class="card">
-      <h2 id="forgotTitle">পাসওয়ার্ড রিসেট</h2>
-      <div id="forgotError" class="error-message"></div>
-      <input id="forgotEmail" type="email" placeholder="ইমেইল লিখুন" required aria-label="Email">
-      <div style="position:relative">
-        <input id="forgotNewPass" type="password" placeholder="নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)" required aria-label="New Password">
-        <span class="password-toggle" onclick="togglePassword('forgotNewPass', this)">দেখান</span>
-      </div>
-      <div class="row">
-        <button onclick="resetPassword()" style="flex:1" aria-label="Reset password">রিসেট</button>
-        <button onclick="showSection('loginPanel')" class="btn-outline" style="flex:1" aria-label="Back to login">ফিরে যান</button>
+        <button onclick="doSignup()" style="flex:1" aria-label="Register">নিবন্ধন</button>
+        <button onclick="showSection('loginPanel')" class="btn-outline" style="flex:1" aria-label="Back">ফিরে যান</button>
       </div>
     </section>
 
@@ -158,308 +100,223 @@
         <div>
           <h3 id="meName"></h3>
           <div class="small" id="meEmail"></div>
-          <div class="small" id="meLocation"></div>
-          <div class="small" id="meAge"></div>
-          <div class="small" id="meGender"></div>
-          <div class="small" id="meOccupation"></div>
         </div>
-        <div style="margin-left:auto">
-          <button onclick="toggleEditMe()" id="btnEditMe" class="btn-outline" aria-label="Edit profile">Edit</button>
-        </div>
+        <button onclick="toggleEditMe()" class="btn-outline" aria-label="Edit profile">Edit</button>
       </div>
-
       <div id="meEdit" class="hidden" style="margin-top:10px">
-        <input id="meNameInput" placeholder="Name" aria-label="Name">
-        <input id="meLocationInput" placeholder="Location" aria-label="Location">
-        <input id="meAgeInput" type="number" min="18" max="100" placeholder="Age" aria-label="Age">
-        <select id="meGenderInput" aria-label="Gender">
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-          <option value="other">Other</option>
-        </select>
-        <input id="meOccupationInput" placeholder="Occupation" aria-label="Occupation">
-        <button onclick="openCloudinaryUpload('profile')" class="btn-outline" aria-label="Upload profile picture">Upload Profile Pic</button>
+        <input id="meNameInput" placeholder="নাম" aria-label="Name">
+        <input id="mePicInput" type="file" accept="image/*" onchange="updateMyPic(this)" aria-label="Profile picture">
         <div class="row">
-          <button onclick="saveMe()" aria-label="Save profile">Save</button>
-          <button onclick="toggleEditMe()" class="btn-outline" aria-label="Cancel edit">Cancel</button>
+          <button onclick="saveMe()" aria-label="Save">Save</button>
+          <button onclick="toggleEditMe()" class="btn-outline" aria-label="Cancel">Cancel</button>
         </div>
       </div>
-
-      <hr>
-      <h4>Gallery</h4>
-      <button onclick="openCloudinaryUpload('gallery')" aria-label="Add gallery images">Add Gallery Images</button>
-      <div class="gallery" id="meGallery"></div>
-
-      <hr>
-      <h4>Friends</h4>
-      <div id="myFriends" class="friends-list"></div>
-    </section>
-
-    <!-- BROWSE USERS -->
-    <section id="browsePanel" class="card">
-      <h3>Users</h3>
-      <div class="row">
-        <input id="searchName" placeholder="Search by name" aria-label="Search by name">
-        <select id="filterGender" aria-label="Filter by gender">
-          <option value="">All Genders</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-          <option value="other">Other</option>
-        </select>
-        <button onclick="filterUsers()">Search</button>
-      </div>
-      <div id="usersList" class="friends-list"></div>
-      <hr>
-      <div id="viewProfile" class="hidden card"></div>
-    </section>
-
-    <!-- FRIEND REQUESTS -->
-    <section id="requestsPanel" class="card">
-      <h3>Friend Requests</h3>
-      <div id="incomingRequests"></div>
-      <hr>
-      <h4>Sent Requests</h4>
-      <div id="sentRequests"></div>
-    </section>
-
-    <!-- NOTIFICATIONS -->
-    <section id="notificationsPanel" class="card">
-      <h3>Notifications</h3>
-      <div id="notificationsList"></div>
     </section>
 
     <!-- FEED -->
     <section id="feedPanel" class="card">
-      <h3>Newsfeed</h3>
+      <h3>নিউজফিড</h3>
       <div class="card">
-        <textarea id="newPostText" placeholder="What's on your mind?" aria-label="Write a post"></textarea>
-        <button onclick="openCloudinaryUpload('post')" aria-label="Add post images">Upload Post Images</button>
+        <textarea id="newPostText" placeholder="কী ভাবছেন?" aria-label="Write a post"></textarea>
+        <input id="newPostImages" type="file" accept="image/*" multiple onchange="previewPostImages(this)" aria-label="Add images">
         <div id="postPreview" class="gallery"></div>
         <div class="row">
-          <button onclick="createPost()" aria-label="Create post">Post</button>
-          <button onclick="clearPost()" class="btn-outline" aria-label="Clear post">Clear</button>
+          <button onclick="createPost()" aria-label="Post">পোস্ট</button>
+          <button onclick="clearPost()" class="btn-outline" aria-label="Clear">ক্লিয়ার</button>
         </div>
       </div>
       <div id="feedArea"></div>
     </section>
-
-    <!-- CHAT -->
-    <section id="chatPanel" class="card">
-      <h3>Chat <button onclick="toggleChatFullscreen()" class="btn-outline" style="float:right">Toggle Fullscreen</button></h3>
-      <div id="chatContacts" class="friends-list"></div>
-      <hr>
-      <div id="chatWindow" class="card hidden">
-        <div id="chatWith" class="small muted"></div>
-        <div id="chatMessages" style="min-height:150px;max-height:300px;overflow:auto"></div>
-        <div class="row">
-          <input id="chatMsg" placeholder="Type a message..." aria-label="Type a message">
-          <button onclick="sendChat()" aria-label="Send message">Send</button>
-        </div>
-      </div>
-    </section>
   </div>
 
-  <footer>Prototype — data stored in your browser (localStorage) with Cloudinary uploads</footer>
+  <footer>Demo — data stored in Telegram Cloud</footer>
 
 <script>
-/* ---------------------------
-  Data model & persistence
----------------------------*/
-function uid(prefix='id'){ return prefix+Math.random().toString(36).slice(2,9) }
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+const localStorage = tg.DeviceStorage;
+const secureStorage = tg.SecureStorage;
+
+// Initialize Firebase (replace with your config)
+const firebaseConfig = {
+  // Add your Firebase config here (apiKey, authDomain, projectId, etc.)
+  // Example: apiKey: "your-api-key", authDomain: "your-project.firebaseapp.com", ...
+};
+firebase.initializeApp(firebaseConfig);
+const storage = firebase.storage();
+
+function uid(prefix = 'id') { return prefix + Math.random().toString(36).slice(2, 9); }
 
 let store = {
-  users: JSON.parse(localStorage.getItem('mm_users')||'null'),
-  posts: JSON.parse(localStorage.getItem('mm_posts')||'null'),
-  chats: JSON.parse(localStorage.getItem('mm_chats')||'null'),
-  notifications: JSON.parse(localStorage.getItem('mm_notifications')||'null')
+  users: null,
+  posts: []
 };
 
-if(!store.users){
-  store.users = [
-    { id:'u1', name:'Sourav Dey', email:'sourav@example.com', pass:CryptoJS.SHA256('1234').toString(), location:'Dhaka', age:30, gender:'male', occupation:'Engineer', pic:'', gallery:[], friends:['u2'], friendRequests:[], sentRequests:[] },
-    { id:'u2', name:'Rahim', email:'rahim@example.com', pass:CryptoJS.SHA256('1234').toString(), location:'Chittagong', age:28, gender:'male', occupation:'Teacher', pic:'', gallery:[], friends:['u1'], friendRequests:[], sentRequests:[] },
-    { id:'u3', name:'Karim', email:'karim@example.com', pass:CryptoJS.SHA256('1234').toString(), location:'Sylhet', age:25, gender:'male', occupation:'Student', pic:'', gallery:[], friends:[], friendRequests:[], sentRequests:[] }
-  ];
-  store.posts = [
-    { id:'p1', userId:'u2', text:'Hello, joining here!', images:[], reactions:{}, comments:[] }
-  ];
-  store.chats = {};
-  store.notifications = {};
-  persist();
-} else {
-  store.posts = store.posts || [];
-  store.chats = store.chats || {};
-  store.notifications = store.notifications || {};
-}
+function loadStore(callback) {
+  showLoading();
+  const keys = ['mm_users', 'mm_posts'];
+  const results = {};
+  let completed = 0;
 
-function persist(){
-  localStorage.setItem('mm_users', JSON.stringify(store.users));
-  localStorage.setItem('mm_posts', JSON.stringify(store.posts));
-  localStorage.setItem('mm_chats', JSON.stringify(store.chats));
-  localStorage.setItem('mm_notifications', JSON.stringify(store.notifications));
-}
-
-/* ---------------------------
-  Cloudinary Upload
----------------------------*/
-const CLOUDINARY_CLOUD_NAME = 'ddnswi7ge';
-const CLOUDINARY_UPLOAD_PRESET = 'matrimony';
-let pendingUploads = []; // Array to store pending image URLs for current operation
-
-function openCloudinaryUpload(type) {
-  if (!currentUser) {
-    alert(translations[currentLang].loginFirst);
-    return;
-  }
-  pendingUploads = [];
-  const options = {
-    cloudName: CLOUDINARY_CLOUD_NAME,
-    uploadPreset: CLOUDINARY_UPLOAD_PRESET,
-    sources: ['local', 'url', 'camera'],
-    multiple: type === 'gallery' || type === 'post',
-    maxFiles: type === 'profile' ? 1 : 10,
-    cropping: true,
-    croppingAspectRatio: type === 'profile' ? 1 : null,
-    showAdvancedOptions: false,
-    showCrop: type === 'profile',
-    showUploadMoreButton: true,
-    maxFileSize: 10000000, // 10MB
-    resourceType: 'image'
-  };
-
-  const myWidget = window.cloudinary.createUploadWidget(
-    options,
-    (error, result) => {
-      if (!error && result && result.event === "success") {
-        const url = result.info.secure_url;
-        pendingUploads.push(url);
-        // Auto-close widget after upload if single file
-        if (type === 'profile' && pendingUploads.length >= 1) {
-          handleUploadComplete(type, pendingUploads);
+  keys.forEach(key => {
+    if (key === 'mm_users') {
+      secureStorage.getItem(key, (error, value, isRestored) => {
+        if (error) {
+          console.error('Error loading users:', error);
+          results[key] = null;
+        } else if (!isRestored) {
+          secureStorage.restoreItem(key, (restoreError) => {
+            if (restoreError) {
+              console.error('Restore failed for users:', restoreError);
+              results[key] = null;
+            } else {
+              secureStorage.getItem(key, (err, val) => {
+                results[key] = val ? JSON.parse(val) : null;
+                completed++;
+                if (completed === keys.length) {
+                  store = {
+                    users: results.mm_users || store.users,
+                    posts: results.mm_posts || []
+                  };
+                  callback();
+                  hideLoading();
+                }
+              });
+            }
+          });
+        } else {
+          results[key] = value ? JSON.parse(value) : null;
+          completed++;
+          if (completed === keys.length) {
+            store = {
+              users: results.mm_users || store.users,
+              posts: results.mm_posts || []
+            };
+            callback();
+            hideLoading();
+          }
         }
-      } else if (error) {
-        console.error('Upload error:', error);
-        alert('Upload failed: ' + error.message);
-      }
-    }
-  );
-
-  myWidget.open();
-  
-  // Listen for close event to handle multiple uploads
-  myWidget.on('close', () => {
-    if (pendingUploads.length > 0) {
-      handleUploadComplete(type, pendingUploads);
+      });
+    } else {
+      localStorage.getItem(key, (error, value) => {
+        if (error) {
+          console.error(`Error loading ${key}:`, error);
+          results[key] = null;
+        } else {
+          results[key] = value ? JSON.parse(value) : null;
+        }
+        completed++;
+        if (completed === keys.length) {
+          store = {
+            users: results.mm_users || store.users,
+            posts: results.mm_posts || []
+          };
+          callback();
+          hideLoading();
+        }
+      });
     }
   });
 }
 
-function handleUploadComplete(type, urls) {
-  if (type === 'profile') {
-    const url = urls[0];
-    const oldPic = currentUser.pic;
-    currentUser.pic = url;
-    if (oldPic !== url) {
-      const post = {
-        id: uid('p'),
-        userId: currentUser.id,
-        text: `${currentUser.name} ${translations[currentLang].updatedProfilePic}`,
-        images: [url],
-        reactions: {},
-        comments: []
-      };
-      store.posts.unshift(post);
-    }
+function persist() {
+  showLoading();
+  secureStorage.setItem('mm_users', JSON.stringify(store.users), (error) => {
+    if (error) console.error('Error saving users:', error);
+  });
+  localStorage.setItem('mm_posts', JSON.stringify(store.posts), (error) => {
+    if (error) console.error('Error saving posts:', error);
+  });
+  hideLoading();
+}
+
+function initializeDefaultData() {
+  if (!store.users) {
+    store.users = [
+      {
+        id: 'u1',
+        telegramId: null,
+        name: 'Sourav Dey',
+        email: 'sourav@example.com',
+        pass: CryptoJS.SHA256('1234').toString(),
+        pic: ''
+      }
+    ];
+    store.posts = [
+      { id: 'p1', userId: 'u1', text: 'Welcome to the demo!', images: [], time: Date.now() }
+    ];
     persist();
-    renderMyProfile();
-    renderFeed();
-    toggleEditMe();
-    alert(translations[currentLang].saved);
-  } else if (type === 'gallery') {
-    currentUser.gallery = currentUser.gallery.concat(urls);
-    persist();
-    renderMyProfile();
-  } else if (type === 'post') {
-    // Preview the uploaded images
-    const preview = document.getElementById('postPreview');
-    preview.innerHTML = '';
-    urls.forEach(url => {
-      const img = document.createElement('img');
-      img.src = url;
-      img.onclick = () => openImageViewer(url);
-      preview.appendChild(img);
-    });
-    // Store for post creation
-    window.pendingPostImages = urls;
   }
 }
 
-/* ---------------------------
-  Helpers
----------------------------*/
 function showLoading() { document.getElementById('loading').style.display = 'block'; }
 function hideLoading() { document.getElementById('loading').style.display = 'none'; }
 function sanitizeInput(str) { return String(str).replace(/[<>]/g, ''); }
 function hashPassword(password) { return CryptoJS.SHA256(password).toString(); }
 
-/* ---------------------------
-  Image Viewer
----------------------------*/
-function openImageViewer(src) {
-  const viewer = document.getElementById('imageViewer');
-  document.getElementById('viewerImage').src = src;
-  viewer.style.display = 'flex';
-}
-function closeImageViewer() {
-  document.getElementById('imageViewer').style.display = 'none';
-}
-function downloadImage() {
-  const src = document.getElementById('viewerImage').src;
-  const a = document.createElement('a');
-  a.href = src;
-  a.download = 'image.jpg';
-  a.click();
+function compressImage(file, callback, maxDim = 200) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+      if (width > height) {
+        if (width > maxDim) {
+          height *= maxDim / width;
+          width = maxDim;
+        }
+      } else {
+        if (height > maxDim) {
+          width *= maxDim / height;
+          height = maxDim;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(callback, 'image/jpeg', 0.7);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
-/* ---------------------------
-  Auth & UI helpers
----------------------------*/
 let currentUser = null;
 
-function showSection(id){
-  ['loginPanel','signupPanel','forgotPanel','profilePanel','browsePanel','requestsPanel','feedPanel','chatPanel','notificationsPanel'].forEach(s=>{
-    document.getElementById(s).style.display='none';
+function showSection(id) {
+  ['loginPanel', 'signupPanel', 'profilePanel', 'feedPanel'].forEach(s => {
+    document.getElementById(s).style.display = 'none';
   });
-  ['loginError','signupError','forgotError','loginMessage'].forEach(e=>{
-    document.getElementById(e).style.display='none';
-    document.getElementById(e).textContent='';
+  ['loginError', 'signupError', 'loginMessage'].forEach(e => {
+    document.getElementById(e).style.display = 'none';
+    document.getElementById(e).textContent = '';
   });
-  document.getElementById(id).style.display='block';
-  if(id !== 'browsePanel') document.getElementById('viewProfile').classList.add('hidden');
-  if(id === 'chatPanel') document.getElementById('chatPanel').classList.add('fullscreen');
-  else document.getElementById('chatPanel').classList.remove('fullscreen');
+  document.getElementById(id).style.display = 'block';
 }
 
-function showError(elementId, message){
+function showError(elementId, message) {
   const errorEl = document.getElementById(elementId);
   errorEl.textContent = message;
   errorEl.style.display = 'block';
 }
 
-function showSuccess(elementId, message){
+function showSuccess(elementId, message) {
   const successEl = document.getElementById(elementId);
   successEl.textContent = message;
   successEl.style.display = 'block';
 }
 
-function validateEmail(email){
+function validateEmail(email) {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return re.test(email);
 }
 
-function togglePassword(inputId, toggleEl){
+function togglePassword(inputId, toggleEl) {
   const input = document.getElementById(inputId);
-  if(input.type === 'password'){
+  if (input.type === 'password') {
     input.type = 'text';
     toggleEl.textContent = translations[currentLang].hide;
   } else {
@@ -468,35 +325,43 @@ function togglePassword(inputId, toggleEl){
   }
 }
 
-function doSignup(){
+function doSignup() {
   showLoading();
   setTimeout(() => {
     const name = sanitizeInput(document.getElementById('regName').value.trim());
     const email = document.getElementById('regEmail').value.trim();
     const pass = document.getElementById('regPass').value;
+    const telegramUser = tg.initDataUnsafe.user;
 
-    if(!name || !email || !pass){
+    if (!name || !email || !pass || !telegramUser) {
       showError('signupError', translations[currentLang].fillAllFields);
       hideLoading();
       return;
     }
-    if(!validateEmail(email)){
+    if (!validateEmail(email)) {
       showError('signupError', translations[currentLang].invalidEmail);
       hideLoading();
       return;
     }
-    if(pass.length < 6){
+    if (pass.length < 6) {
       showError('signupError', translations[currentLang].passwordTooShort);
       hideLoading();
       return;
     }
-    if(store.users.some(u=>u.email===email)){
+    if (store.users.some(u => u.email === email)) {
       showError('signupError', translations[currentLang].emailExists);
       hideLoading();
       return;
     }
 
-    const newU = { id: uid('u'), name, email, pass: hashPassword(pass), location:'', age: '', gender: '', occupation: '', pic:'', gallery:[], friends:[], friendRequests:[], sentRequests:[] };
+    const newU = {
+      id: uid('u'),
+      telegramId: telegramUser.id,
+      name,
+      email,
+      pass: hashPassword(pass),
+      pic: ''
+    };
     store.users.push(newU);
     persist();
 
@@ -512,30 +377,21 @@ function doSignup(){
   }, 500);
 }
 
-function doLogin(){
+function doLogin() {
   showLoading();
   setTimeout(() => {
-    const email = document.getElementById('loginEmail').value.trim();
-    const pass = hashPassword(document.getElementById('loginPass').value);
-
-    if(!email || !document.getElementById('loginPass').value){
-      showError('loginError', translations[currentLang].fillAllFields);
-      hideLoading();
-      return;
-    }
-    if(!validateEmail(email)){
-      showError('loginError', translations[currentLang].invalidEmail);
-      hideLoading();
-      return;
-    }
-
-    const user = store.users.find(u=>u.email===email && u.pass===pass);
-    if(!user){
+    const telegramUser = tg.initDataUnsafe.user;
+    if (!telegramUser) {
       showError('loginError', translations[currentLang].invalidCredentials);
       hideLoading();
       return;
     }
-
+    const user = store.users.find(u => u.telegramId === telegramUser.id);
+    if (!user) {
+      showError('loginError', translations[currentLang].emailNotFound);
+      hideLoading();
+      return;
+    }
     currentUser = user;
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginPass').value = '';
@@ -545,112 +401,31 @@ function doLogin(){
   }, 500);
 }
 
-function resetPassword(){
-  showLoading();
-  setTimeout(() => {
-    const email = document.getElementById('forgotEmail').value.trim();
-    const newPass = document.getElementById('forgotNewPass').value;
-
-    if(!email || !newPass){
-      showError('forgotError', translations[currentLang].fillAllFields);
-      hideLoading();
-      return;
-    }
-    if(!validateEmail(email)){
-      showError('forgotError', translations[currentLang].invalidEmail);
-      hideLoading();
-      return;
-    }
-    if(newPass.length < 6){
-      showError('forgotError', translations[currentLang].passwordTooShort);
-      hideLoading();
-      return;
-    }
-
-    const user = store.users.find(u=>u.email===email);
-    if(!user){
-      showError('forgotError', translations[currentLang].emailNotFound);
-      hideLoading();
-      return;
-    }
-
-    user.pass = hashPassword(newPass);
-    persist();
-
-    document.getElementById('forgotEmail').value = '';
-    document.getElementById('forgotNewPass').value = '';
-    document.querySelector('#forgotNewPass + .password-toggle').textContent = translations[currentLang].show;
-
-    showSection('loginPanel');
-    showSuccess('loginMessage', translations[currentLang].passwordResetSuccess);
-    document.getElementById('loginEmail').focus();
-    hideLoading();
-  }, 500);
-}
-
-function onLogin(){
+function onLogin() {
   document.getElementById('mainNav').style.display = 'flex';
   renderMyProfile();
-  renderUsersList();
-  renderRequests();
   renderFeed();
-  renderChatContacts();
-  renderNotifications();
   showSection('profilePanel');
 }
 
-/* ---------------------------
-  Profile
----------------------------*/
-function renderMyProfile(){
-  if(!currentUser) return;
+function renderMyProfile() {
+  if (!currentUser) return;
   document.getElementById('meName').textContent = currentUser.name;
   document.getElementById('meEmail').textContent = currentUser.email;
-  document.getElementById('meLocation').textContent = currentUser.location || translations[currentLang].notSet;
-  document.getElementById('meAge').textContent = currentUser.age ? `${currentUser.age} years` : translations[currentLang].notSet;
-  document.getElementById('meGender').textContent = currentUser.gender || translations[currentLang].notSet;
-  document.getElementById('meOccupation').textContent = currentUser.occupation || translations[currentLang].notSet;
   document.getElementById('mePic').src = currentUser.pic || DEFAULT_IMAGE;
-  document.getElementById('mePic').onclick = () => currentUser.pic && openImageViewer(currentUser.pic);
-  document.getElementById('meGallery').innerHTML = '';
-  currentUser.gallery.forEach(src=>{
-    const img = document.createElement('img');
-    img.src = src;
-    img.onclick = () => openImageViewer(src);
-    document.getElementById('meGallery').appendChild(img);
-  });
-  const fdiv = document.getElementById('myFriends'); fdiv.innerHTML='';
-  currentUser.friends.forEach(fid=>{
-    const u = store.users.find(x=>x.id===fid);
-    if(u){
-      const el = document.createElement('div'); el.className='friend-pill';
-      const picOnclick = u.pic ? `onclick="openImageViewer('${u.pic}')"` : '';
-      el.innerHTML = `<img src="${u.pic||DEFAULT_IMAGE}" style="width:36px;height:36px;border-radius:6px;object-fit:cover" ${picOnclick}/><div><strong style="font-size:13px">${u.name}</strong><div class="small">${u.location||''}</div></div>`;
-      el.onclick = (e) => { e.stopPropagation(); openProfile(u.id); };
-      fdiv.appendChild(el);
-    }
-  });
 }
 
-function toggleEditMe(){
+function toggleEditMe() {
   document.getElementById('meEdit').classList.toggle('hidden');
-  if(!document.getElementById('meEdit').classList.contains('hidden')){
+  if (!document.getElementById('meEdit').classList.contains('hidden')) {
     document.getElementById('meNameInput').value = currentUser.name;
-    document.getElementById('meLocationInput').value = currentUser.location;
-    document.getElementById('meAgeInput').value = currentUser.age;
-    document.getElementById('meGenderInput').value = currentUser.gender;
-    document.getElementById('meOccupationInput').value = currentUser.occupation;
   }
 }
 
-function saveMe(){
+function saveMe() {
   showLoading();
   setTimeout(() => {
     currentUser.name = sanitizeInput(document.getElementById('meNameInput').value || currentUser.name);
-    currentUser.location = sanitizeInput(document.getElementById('meLocationInput').value || currentUser.location);
-    currentUser.age = document.getElementById('meAgeInput').value || currentUser.age;
-    currentUser.gender = document.getElementById('meGenderInput').value || currentUser.gender;
-    currentUser.occupation = sanitizeInput(document.getElementById('meOccupationInput').value || currentUser.occupation);
     persist();
     renderMyProfile();
     toggleEditMe();
@@ -659,435 +434,109 @@ function saveMe(){
   }, 500);
 }
 
-/* ---------------------------
-  Browse users & profiles
----------------------------*/
-function renderUsersList(){
-  const list = document.getElementById('usersList'); list.innerHTML='';
-  store.users.filter(u=>u.id!==currentUser.id).forEach(u=>{
-    const el = document.createElement('div'); el.className='friend-pill';
-    const picOnclick = u.pic ? `onclick="openImageViewer('${u.pic}')"` : '';
-    el.innerHTML = `<img src="${u.pic||DEFAULT_IMAGE}" style="width:48px;height:48px;border-radius:8px;object-fit:cover" ${picOnclick}/><div style="min-width:140px"><strong>${u.name}</strong><div class="small">${u.location||''}</div><div class="small">${u.age ? u.age+' years' : ''} ${u.gender||''}</div></div>`;
-    const btns = document.createElement('div'); btns.style.marginLeft='auto';
-    const isFriend = currentUser.friends.includes(u.id);
-    const sent = currentUser.sentRequests.includes(u.id);
-    if(isFriend){
-      const b = document.createElement('button'); b.className='btn-outline'; b.textContent=translations[currentLang].friends; b.onclick = ()=> openProfile(u.id); btns.appendChild(b);
-    } else if(sent){
-      const b = document.createElement('button'); b.className='btn-outline'; b.textContent=translations[currentLang].cancelRequest; b.onclick = ()=> cancelRequest(u.id); btns.appendChild(b);
-    } else {
-      const b = document.createElement('button'); b.textContent=translations[currentLang].sendRequest; b.onclick = ()=> sendFriendRequest(u.id); btns.appendChild(b);
-    }
-    el.appendChild(btns);
-    list.appendChild(el);
-  });
-}
-
-function filterUsers(){
-  const name = document.getElementById('searchName').value.toLowerCase();
-  const gender = document.getElementById('filterGender').value;
-  const list = document.getElementById('usersList'); list.innerHTML='';
-  store.users
-    .filter(u => u.id !== currentUser.id && (!name || u.name.toLowerCase().includes(name)) && (!gender || u.gender === gender))
-    .forEach(u => {
-      const el = document.createElement('div'); el.className='friend-pill';
-      const picOnclick = u.pic ? `onclick="openImageViewer('${u.pic}')"` : '';
-      el.innerHTML = `<img src="${u.pic||DEFAULT_IMAGE}" style="width:48px;height:48px;border-radius:8px;object-fit:cover" ${picOnclick}/><div style="min-width:140px"><strong>${u.name}</strong><div class="small">${u.location||''}</div><div class="small">${u.age ? u.age+' years' : ''} ${u.gender||''}</div></div>`;
-      const btns = document.createElement('div'); btns.style.marginLeft='auto';
-      const isFriend = currentUser.friends.includes(u.id);
-      const sent = currentUser.sentRequests.includes(u.id);
-      if(isFriend){
-        const b = document.createElement('button'); b.className='btn-outline'; b.textContent=translations[currentLang].friends; b.onclick = ()=> openProfile(u.id); btns.appendChild(b);
-      } else if(sent){
-        const b = document.createElement('button'); b.className='btn-outline'; b.textContent=translations[currentLang].cancelRequest; b.onclick = ()=> cancelRequest(u.id); btns.appendChild(b);
-      } else {
-        const b = document.createElement('button'); b.textContent=translations[currentLang].sendRequest; b.onclick = ()=> sendFriendRequest(u.id); btns.appendChild(b);
-      }
-      el.appendChild(btns);
-      list.appendChild(el);
+function updateMyPic(inp) {
+  const file = inp.files[0];
+  if (!file) return;
+  compressImage(file, (blob) => {
+    const storageRef = storage.ref(`profile_pics/${currentUser.id}/${file.name}`);
+    storageRef.put(blob).then(() => {
+      storageRef.getDownloadURL().then((url) => {
+        currentUser.pic = url;
+        const post = {
+          id: uid('p'),
+          userId: currentUser.id,
+          text: `${currentUser.name} ${translations[currentLang].updatedProfilePic}`,
+          images: [currentUser.pic],
+          time: Date.now()
+        };
+        store.posts.unshift(post);
+        persist();
+        renderMyProfile();
+        renderFeed();
+      }).catch(error => console.error('Image upload failed:', error));
     });
-}
-
-function openProfile(uid){
-  const u = store.users.find(x=>x.id===uid);
-  const container = document.getElementById('viewProfile');
-  container.classList.remove('hidden');
-  container.innerHTML = '';
-  const html = document.createElement('div');
-  const picOnclick = u.pic ? `onclick="openImageViewer('${u.pic}')"` : '';
-  html.innerHTML = `
-    <div style="display:flex;gap:10px;align-items:center">
-      <img src="${u.pic||DEFAULT_IMAGE}" class="profile-thumb" alt="${u.name}'s profile picture" ${picOnclick}/>
-      <div><h3>${u.name}</h3><div class="small">${u.email}</div><div class="small">${u.location||translations[currentLang].notSet}</div><div class="small">${u.age ? u.age+' years' : translations[currentLang].notSet} ${u.gender||''}</div><div class="small">${u.occupation||translations[currentLang].notSet}</div></div>
-    </div>
-    <div style="margin-top:8px">
-      <button id="profileFriendBtn" aria-label="Friend action"></button>
-      <button onclick="viewGallery('${u.id}')" class="btn-outline" aria-label="View gallery">${translations[currentLang].viewGallery}</button>
-    </div>
-    <hr>
-    <h4>${translations[currentLang].friends}</h4>
-    <div id="profileFriendList" class="friends-list"></div>
-  `;
-  container.appendChild(html);
-  const btn = document.getElementById('profileFriendBtn');
-  if(u.id === currentUser.id){
-    btn.textContent = translations[currentLang].thisIsYou; btn.disabled = true;
-  } else if(currentUser.friends.includes(u.id)){
-    btn.textContent = translations[currentLang].unfriend; btn.onclick = () => { if(confirm(translations[currentLang].confirmUnfriend)) unfriend(u.id); };
-  } else if(currentUser.sentRequests.includes(u.id)){
-    btn.textContent = translations[currentLang].cancelRequest; btn.onclick = () => cancelRequest(u.id);
-  } else if(currentUser.friendRequests.includes(u.id)){
-    btn.textContent = translations[currentLang].acceptRequest; btn.onclick = () => acceptFriend(u.id);
-  } else {
-    btn.textContent = translations[currentLang].sendRequest; btn.onclick = () => sendFriendRequest(u.id);
-  }
-  const fl = document.getElementById('profileFriendList'); fl.innerHTML = '';
-  u.friends.forEach(fid=>{
-    const fu = store.users.find(x=>x.id===fid);
-    if(fu){
-      const fEl = document.createElement('div'); fEl.className='friend-pill';
-      const fuPicOnclick = fu.pic ? `onclick="openImageViewer('${fu.pic}')"` : '';
-      fEl.innerHTML=`<img src="${fu.pic||DEFAULT_IMAGE}" style="width:36px;height:36px;border-radius:6px" alt="${fu.name}'s picture" ${fuPicOnclick}/><div><strong>${fu.name}</strong></div>`; fl.appendChild(fEl);
-    }
-  });
-  container.scrollIntoView({behavior:'smooth'});
-}
-
-function sendFriendRequest(targetId){
-  showLoading();
-  setTimeout(() => {
-    const target = store.users.find(u=>u.id===targetId);
-    if(!target) return;
-    if(!target.friendRequests.includes(currentUser.id)) target.friendRequests.push(currentUser.id);
-    if(!currentUser.sentRequests.includes(targetId)) currentUser.sentRequests.push(targetId);
-    addNotification(targetId, `${currentUser.name} ${translations[currentLang].friendRequestText}`);
-    persist();
-    renderUsersList(); renderRequests(); renderNotifications();
-    alert(translations[currentLang].requestSent);
-    hideLoading();
-  }, 500);
-}
-
-function cancelRequest(targetId){
-  const target = store.users.find(u=>u.id===targetId);
-  if(!target) return;
-  target.friendRequests = target.friendRequests.filter(x=>x!==currentUser.id);
-  currentUser.sentRequests = currentUser.sentRequests.filter(x=>x!==targetId);
-  persist(); renderUsersList(); renderRequests(); renderNotifications(); alert(translations[currentLang].requestCancelled);
-}
-
-function acceptFriend(fromId){
-  if(!currentUser.friendRequests.includes(fromId)) return;
-  if(!currentUser.friends.includes(fromId)) currentUser.friends.push(fromId);
-  const from = store.users.find(u=>u.id===fromId);
-  if(from && !from.friends.includes(currentUser.id)) from.friends.push(currentUser.id);
-  currentUser.friendRequests = currentUser.friendRequests.filter(x=>x!==fromId);
-  if(from) from.sentRequests = from.sentRequests.filter(x=>x!==currentUser.id);
-  addNotification(fromId, `${currentUser.name} ${translations[currentLang].friendAdded}`);
-  persist(); renderMyProfile(); renderUsersList(); renderRequests(); renderChatContacts(); renderNotifications();
-  alert(translations[currentLang].friendAdded);
-}
-
-function declineFriend(fromId){
-  currentUser.friendRequests = currentUser.friendRequests.filter(x=>x!==fromId);
-  const from = store.users.find(u=>u.id===fromId);
-  if(from) from.sentRequests = from.sentRequests.filter(x=>x!==currentUser.id);
-  persist(); renderRequests(); renderNotifications(); alert(translations[currentLang].requestDeclined);
-}
-
-function unfriend(uid){
-  currentUser.friends = currentUser.friends.filter(x=>x!==uid);
-  const other = store.users.find(u=>u.id===uid);
-  if(other) other.friends = other.friends.filter(x=>x!==currentUser.id);
-  persist(); renderMyProfile(); renderUsersList(); renderChatContacts(); renderNotifications(); alert(translations[currentLang].unfriended);
-}
-
-function viewGallery(uid){
-  const u = store.users.find(x=>x.id===uid);
-  if(!u) return;
-  let html = `<h4>${u.name} - ${translations[currentLang].gallery}</h4><div class="gallery">`;
-  u.gallery.forEach(g=> html+=`<img src="${g}" alt="Gallery image" onclick="openImageViewer('${g}')">`);
-  html += '</div>';
-  const cont = document.getElementById('viewProfile'); cont.classList.remove('hidden'); cont.innerHTML = html;
-}
-
-/* ---------------------------
-  Notifications
----------------------------*/
-function addNotification(userId, message){
-  if(!store.notifications[userId]) store.notifications[userId] = [];
-  store.notifications[userId].push({ id: uid('n'), message, time: Date.now() });
-  persist();
-}
-
-function renderNotifications(){
-  const list = document.getElementById('notificationsList'); list.innerHTML = '';
-  const notifs = store.notifications[currentUser.id] || [];
-  notifs.forEach(n => {
-    const el = document.createElement('div'); el.className = 'card';
-    el.innerHTML = `<div>${n.message}</div><div class="small muted">${new Date(n.time).toLocaleString()}</div>`;
-    list.appendChild(el);
   });
 }
 
-/* ---------------------------
-  Requests panel
----------------------------*/
-function renderRequests(){
-  const incoming = document.getElementById('incomingRequests');
-  incoming.innerHTML = '';
-  currentUser.friendRequests.forEach(fromId=>{
-    const from = store.users.find(u=>u.id===fromId);
-    if(from){
-      const el = document.createElement('div'); el.className='card';
-      el.innerHTML = `<strong>${from.name}</strong> ${translations[currentLang].friendRequestText} <div style="margin-top:6px"><button onclick="acceptFriend('${from.id}')">${translations[currentLang].accept}</button> <button class="btn-outline" onclick="declineFriend('${from.id}')">${translations[currentLang].decline}</button></div>`;
-      incoming.appendChild(el);
-    }
-  });
-  const sent = document.getElementById('sentRequests'); sent.innerHTML = '';
-  currentUser.sentRequests.forEach(toId=>{
-    const to = store.users.find(u=>u.id===toId);
-    if(to){
-      const el = document.createElement('div'); el.className='card';
-      el.innerHTML = `<strong>${translations[currentLang].to} ${to.name}</strong> <div><button onclick="cancelRequest('${to.id}')" class="btn-outline">${translations[currentLang].cancel}</button></div>`;
-      sent.appendChild(el);
-    }
-  });
+function previewPostImages(inp) {
+  const files = Array.from(inp.files || []);
+  const preview = document.getElementById('postPreview');
+  preview.innerHTML = '';
+  files.forEach(f => compressImage(f, (blob) => {
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(blob);
+    preview.appendChild(img);
+  }));
 }
 
-/* ---------------------------
-  Feed
----------------------------*/
-const REACTS = {
-  love: '❤️',
-  haha: '😆',
-  sad: '😢',
-  rain: '🌧',
-  hungry: '🍔',
-  danger: '⚠️'
-};
-
-function createPost(){
-  if(!currentUser) return alert(translations[currentLang].loginFirst);
+function createPost() {
+  if (!currentUser) return alert(translations[currentLang].loginFirst);
   const text = sanitizeInput(document.getElementById('newPostText').value.trim());
-  const images = window.pendingPostImages || [];
-  const post = { id: uid('p'), userId: currentUser.id, text, images, reactions: {}, comments: [] };
-  store.posts.unshift(post);
-  persist(); 
-  renderFeed(); 
-  clearPost();
+  const files = document.getElementById('newPostImages').files;
+  const images = [];
+  const done = () => {
+    const post = { id: uid('p'), userId: currentUser.id, text, images, time: Date.now() };
+    store.posts.unshift(post);
+    persist();
+    renderFeed();
+    clearPost();
+  };
+  if (files.length === 0) return done();
+  let uploaded = 0;
+  Array.from(files).forEach(f => compressImage(f, (blob) => {
+    const storageRef = storage.ref(`posts/${currentUser.id}/${f.name}`);
+    storageRef.put(blob).then(() => {
+      storageRef.getDownloadURL().then((url) => {
+        images.push(url);
+        uploaded++;
+        if (uploaded === files.length) done();
+      });
+    });
+  }));
 }
 
-function clearPost(){
-  document.getElementById('newPostText').value='';
-  document.getElementById('postPreview').innerHTML='';
-  window.pendingPostImages = [];
+function clearPost() {
+  document.getElementById('newPostText').value = '';
+  document.getElementById('newPostImages').value = '';
+  document.getElementById('postPreview').innerHTML = '';
 }
 
-function renderFeed(){
-  const area = document.getElementById('feedArea'); area.innerHTML='';
-  store.posts.forEach(p=>{
-    const user = store.users.find(u=>u.id===p.userId) || {};
-    const card = document.createElement('div'); card.className='card';
-    const picOnclick = user.pic ? `onclick="openImageViewer('${user.pic}')"` : '';
-    let html = `<div style="display:flex;gap:8px;align-items:center"><img src="${user.pic||DEFAULT_IMAGE}" style="width:44px;height:44px;border-radius:8px;object-fit:cover" alt="${user.name}'s picture" ${picOnclick}/><div><strong>${user.name||'Unknown'}</strong><div class="small">${user.location||''}</div></div></div>`;
-    html += `<p style="margin-top:8px">${escapeHtml(p.text||'')}</p>`;
-    if(p.images && p.images.length){
-      html += `<div class="gallery">${p.images.map(i=>`<img src="${i}" alt="Post image" onclick="openImageViewer('${i}')">`).join('')}</div>`;
+function renderFeed() {
+  const area = document.getElementById('feedArea');
+  area.innerHTML = '';
+  store.posts.forEach(p => {
+    const user = store.users.find(u => u.id === p.userId) || {};
+    const card = document.createElement('div');
+    card.className = 'card';
+    let html = `<div style="display:flex;gap:8px;align-items:center"><img src="${user.pic || DEFAULT_IMAGE}" class="profile-thumb" alt="${user.name}'s picture"/><div><strong>${user.name || 'Unknown'}</strong><div class="small">${new Date(p.time).toLocaleString()}</div></div></div>`;
+    html += `<p style="margin-top:8px">${escapeHtml(p.text || '')}</p>`;
+    if (p.images && p.images.length) {
+      html += `<div class="gallery">${p.images.map(i => `<img src="${i}" alt="Post image">`).join('')}</div>`;
     }
-    const counts = summarizeReacts(p.reactions);
-    html += `<div class="small muted">${translations[currentLang].reactions}: ${counts.map(c=>c.count? `${REACTS[c.type]} ${c.count}` : '').filter(Boolean).join(' ') || '0'}</div>`;
-    html += `<div class="post-actions">`;
-    html += `<div style="display:flex;gap:6px">`;
-    Object.keys(REACTS).forEach(rt=>{
-      html += `<button class="react-btn" onclick="toggleReact('${p.id}','${rt}')" aria-label="React with ${rt}">${REACTS[rt]}</button>`;
-    });
-    html += `</div>`;
-    html += `<div style="margin-left:auto"><button class="btn-outline" onclick="focusCommentBox('${p.id}')" aria-label="Comment on post">${translations[currentLang].comment}</button></div>`;
-    html += `</div>`;
-    html += `<div id="comments-${p.id}" style="margin-top:8px">`;
-    p.comments.forEach(c=>{
-      const commentUser = store.users.find(u=>u.id===c.userId)||{name:'User'};
-      html += `<div class="comment"><strong>${commentUser.name}</strong> <div>${escapeHtml(c.text)}</div>`;
-      const commentCounts = summarizeReacts(c.reactions);
-      html += `<div class="small muted">${translations[currentLang].reactions}: ${commentCounts.map(c=>c.count? `${REACTS[c.type]} ${c.count}` : '').filter(Boolean).join(' ') || '0'}</div>`;
-      html += `<div style="display:flex;gap:6px">`;
-      Object.keys(REACTS).forEach(rt=>{
-        html += `<button class="react-btn" onclick="toggleCommentReact('${p.id}','${c.id}','${rt}')" aria-label="React with ${rt}">${REACTS[rt]}</button>`;
-      });
-      html += `</div>`;
-      c.replies.forEach(r=>{
-        const replyUser = store.users.find(u=>u.id===r.userId)||{name:'User'};
-        html += `<div class="reply"><strong>${replyUser.name}</strong> <div>${escapeHtml(r.text)}</div>`;
-        const replyCounts = summarizeReacts(r.reactions);
-        html += `<div class="small muted">${translations[currentLang].reactions}: ${replyCounts.map(c=>c.count? `${REACTS[c.type]} ${c.count}` : '').filter(Boolean).join(' ') || '0'}</div>`;
-        html += `<div style="display:flex;gap:6px">`;
-        Object.keys(REACTS).forEach(rt=>{
-          html += `<button class="react-btn" onclick="toggleReplyReact('${p.id}','${c.id}','${r.id}','${rt}')" aria-label="React with ${rt}">${REACTS[rt]}</button>`;
-        });
-        html += `</div>`;
-        html += `</div>`;
-      });
-      html += `<div style="margin-top:6px"><input id="replyInput-${p.id}-${c.id}" placeholder="${translations[currentLang].reply}" aria-label="Reply to comment"><button onclick="replyToComment('${p.id}','${c.id}')" aria-label="Submit reply">${translations[currentLang].reply}</button></div>`;
-      html += `</div>`;
-    });
-    html += `<div style="margin-top:8px"><input id="commentInput-${p.id}" placeholder="${translations[currentLang].writeComment}" aria-label="Write a comment"><button onclick="addComment('${p.id}')" aria-label="Submit comment">${translations[currentLang].comment}</button></div>`;
-    html += `</div>`;
     card.innerHTML = html;
     area.appendChild(card);
   });
 }
 
-function summarizeReacts(reactions){
-  const map = {};
-  Object.keys(REACTS).forEach(k=> map[k]=0);
-  Object.values(reactions||{}).forEach(v=> map[v] = (map[v]||0)+1);
-  return Object.keys(map).map(k=>({type:k,count:map[k]})).sort((a,b)=>b.count-a.count);
-}
-
-function toggleReact(postId, reactType){
-  const post = store.posts.find(p=>p.id===postId);
-  if(!post) return;
-  const prev = post.reactions[currentUser.id];
-  if(prev === reactType) delete post.reactions[currentUser.id];
-  else post.reactions[currentUser.id] = reactType;
-  persist(); renderFeed();
-}
-
-function toggleCommentReact(postId, commentId, reactType){
-  const post = store.posts.find(p=>p.id===postId);
-  if(!post) return;
-  const comment = post.comments.find(c=>c.id===commentId);
-  if(!comment) return;
-  if(!comment.reactions) comment.reactions = {};
-  const prev = comment.reactions[currentUser.id];
-  if(prev === reactType) delete comment.reactions[currentUser.id];
-  else comment.reactions[currentUser.id] = reactType;
-  persist(); renderFeed();
-}
-
-function toggleReplyReact(postId, commentId, replyId, reactType){
-  const post = store.posts.find(p=>p.id===postId);
-  if(!post) return;
-  const comment = post.comments.find(c=>c.id===commentId);
-  if(!comment) return;
-  const reply = comment.replies.find(r=>r.id===replyId);
-  if(!reply) return;
-  if(!reply.reactions) reply.reactions = {};
-  const prev = reply.reactions[currentUser.id];
-  if(prev === reactType) delete reply.reactions[currentUser.id];
-  else reply.reactions[currentUser.id] = reactType;
-  persist(); renderFeed();
-}
-
-function addComment(postId){
-  const inp = document.getElementById('commentInput-'+postId);
-  const text = sanitizeInput(inp.value.trim());
-  if(!text) return;
-  const post = store.posts.find(p=>p.id===postId);
-  if(!post){ alert(translations[currentLang].postNotFound); return; }
-  const comment = { id: uid('c'), userId: currentUser.id, text, replies: [], reactions: {} };
-  post.comments.push(comment);
-  persist(); renderFeed();
-}
-
-function replyToComment(postId, commentId){
-  const inp = document.getElementById(`replyInput-${postId}-${commentId}`);
-  const text = sanitizeInput(inp.value.trim());
-  if(!text) return;
-  const post = store.posts.find(p=>p.id===postId);
-  if(!post) return;
-  const comment = post.comments.find(c=>c.id===commentId);
-  if(!comment) return;
-  comment.replies.push({ id: uid('r'), userId: currentUser.id, text, reactions: {} });
-  persist(); renderFeed();
-}
-
-function focusCommentBox(postId){
-  document.getElementById('commentInput-'+postId).focus();
-}
-
-/* ---------------------------
-  Chat
----------------------------*/
-function chatId(a,b){ return [a,b].sort().join('_') }
-
-function toggleChatFullscreen(){
-  const chatPanel = document.getElementById('chatPanel');
-  chatPanel.classList.toggle('fullscreen');
-}
-
-function renderChatContacts(){
-  const cont = document.getElementById('chatContacts'); cont.innerHTML='';
-  currentUser.friends.forEach(fid=>{
-    const fu = store.users.find(u=>u.id===fid);
-    if(fu){
-      const el = document.createElement('div'); el.className='friend-pill'; el.style.cursor='pointer';
-      const picOnclick = fu.pic ? `onclick="openImageViewer('${fu.pic}')"` : '';
-      el.innerHTML = `<img src="${fu.pic||DEFAULT_IMAGE}" style="width:36px;height:36px;border-radius:6px;object-fit:cover" alt="${fu.name}'s picture" ${picOnclick}/><div><strong>${fu.name}</strong></div>`;
-      el.onclick = (e) => { e.stopPropagation(); openChatWith(fid); };
-      cont.appendChild(el);
-    }
-  });
-}
-
-function openChatWith(uid){
-  document.getElementById('chatWindow').classList.remove('hidden');
-  const fu = store.users.find(u=>u.id===uid);
-  document.getElementById('chatWith').textContent = translations[currentLang].chatWith+(fu?fu.name:'User');
-  document.getElementById('chatMessages').innerHTML = '';
-  const id = chatId(currentUser.id, uid);
-  const conv = store.chats[id] || [];
-  conv.forEach(m=>{
-    const p = document.createElement('div'); p.innerHTML = `<div style="font-size:13px"><strong>${(store.users.find(u=>u.id===m.from)||{name:translations[currentLang].you}).name}</strong> <span class="small muted">${new Date(m.t).toLocaleString()}</span></div><div>${escapeHtml(m.text)}</div>`;
-    document.getElementById('chatMessages').appendChild(p);
-  });
-  document.getElementById('chatWindow').dataset.with = uid;
-}
-
-function sendChat(){
-  const txt = sanitizeInput(document.getElementById('chatMsg').value.trim());
-  if(!txt) return;
-  const to = document.getElementById('chatWindow').dataset.with;
-  if(!to) return alert(translations[currentLang].selectFriend);
-  const id = chatId(currentUser.id, to);
-  if(!store.chats[id]) store.chats[id]=[];
-  store.chats[id].push({ from: currentUser.id, to, text: txt, t: Date.now() });
-  persist();
-  document.getElementById('chatMsg').value='';
-  openChatWith(to);
-}
-
-/* ---------------------------
-  Helpers
----------------------------*/
-function logout(){
+function logout() {
   currentUser = null;
-  document.getElementById('mainNav').style.display='none';
+  document.getElementById('mainNav').style.display = 'none';
   showSection('loginPanel');
 }
 
-function escapeHtml(str=''){ return String(str).replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[s]) }
+function escapeHtml(str = '') { return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s]); }
 
 const DEFAULT_IMAGE = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#bbb" font-size="14">No Image</text></svg>`
 );
 
-/* ---------------------------
-  Language
----------------------------*/
 let currentLang = 'bn';
 const translations = {
   bn: {
     login: 'লগইন',
     signup: 'সাইনআপ',
-    forgot: 'পাসওয়ার্ড রিসেট',
     profile: 'প্রোফাইল',
-    users: 'ব্যবহারকারী',
-    requests: 'রিকোয়েস্ট',
     feed: 'নিউজফিড',
-    chat: 'চ্যাট',
-    notifications: 'নোটিফিকেশন',
     logout: 'লগআউট',
     fillAllFields: 'সমস্ত ক্ষেত্র পূরণ করুন',
     invalidEmail: 'বৈধ ইমেইল প্রবেশ করান',
@@ -1096,51 +545,17 @@ const translations = {
     signupSuccess: 'নিবন্ধন সফল! এখন লগইন করুন।',
     invalidCredentials: 'ভুল ইমেইল বা পাসওয়ার্ড',
     emailNotFound: 'ইমেইলটি নিবন্ধিত নয়',
-    passwordResetSuccess: 'পাসওয়ার্ড রিসেট সফল! এখন লগইন করুন।',
     show: 'দেখান',
     hide: 'লুকান',
-    friends: 'বন্ধু',
-    cancelRequest: 'রিকোয়েস্ট বাতিল',
-    sendRequest: 'রিকোয়েস্ট পাঠান',
-    thisIsYou: 'এটি আপনি',
-    unfriend: 'আনফ্রেন্ড',
-    acceptRequest: 'রিকোয়েস্ট গ্রহণ',
-    viewGallery: 'গ্যালারি দেখুন',
-    gallery: 'গ্যালারি',
-    friendRequestText: 'আপনার বন্ধু হতে চায়',
-    accept: 'গ্রহণ',
-    decline: 'প্রত্যাখ্যান',
-    to: 'প্রতি:',
-    cancel: 'বাতিল',
-    reactions: 'রিঅ্যাকশন',
-    comment: 'মন্তব্য',
-    reply: 'উত্তর',
-    writeComment: 'মন্তব্য লিখুন...',
     loginFirst: 'প্রথমে লগইন করুন',
-    postNotFound: 'পোস্ট পাওয়া যায়নি',
-    chatWith: 'চ্যাট করুন ',
-    you: 'আপনি',
-    selectFriend: 'একজন বন্ধু নির্বাচন করুন',
-    requestSent: 'ফ্রেন্ড রিকোয়েস্ট পাঠানো হয়েছে',
-    requestCancelled: 'রিকোয়েস্ট বাতিল করা হয়েছে',
-    friendAdded: 'বন্ধু যোগ করা হয়েছে',
-    requestDeclined: 'রিকোয়েস্ট প্রত্যাখ্যান করা হয়েছে',
-    unfriended: 'আনফ্রেন্ড করা হয়েছে',
     saved: 'সংরক্ষিত',
-    notSet: 'নির্ধারিত নয়',
-    updatedProfilePic: 'নতুন প্রোফাইল ছবি আপডেট করেছেন',
-    confirmUnfriend: 'আপনি কি নিশ্চিতভাবে আনফ্রেন্ড করতে চান?'
+    updatedProfilePic: 'নতুন প্রোফাইল ছবি আপডেট করেছেন'
   },
   en: {
     login: 'Login',
     signup: 'Signup',
-    forgot: 'Reset Password',
     profile: 'Profile',
-    users: 'Users',
-    requests: 'Requests',
     feed: 'Feed',
-    chat: 'Chat',
-    notifications: 'Notifications',
     logout: 'Logout',
     fillAllFields: 'Please fill all fields',
     invalidEmail: 'Enter a valid email',
@@ -1149,78 +564,40 @@ const translations = {
     signupSuccess: 'Registration successful! Please login.',
     invalidCredentials: 'Invalid email or password',
     emailNotFound: 'Email not registered',
-    passwordResetSuccess: 'Password reset successful! Please login.',
     show: 'Show',
     hide: 'Hide',
-    friends: 'Friends',
-    cancelRequest: 'Cancel Request',
-    sendRequest: 'Send Request',
-    thisIsYou: 'This is you',
-    unfriend: 'Unfriend',
-    acceptRequest: 'Accept Request',
-    viewGallery: 'View Gallery',
-    gallery: 'Gallery',
-    friendRequestText: 'wants to be your friend',
-    accept: 'Accept',
-    decline: 'Decline',
-    to: 'To:',
-    cancel: 'Cancel',
-    reactions: 'Reactions',
-    comment: 'Comment',
-    reply: 'Reply',
-    writeComment: 'Write a comment...',
     loginFirst: 'Please login first',
-    postNotFound: 'Post not found',
-    chatWith: 'Chat with ',
-    you: 'You',
-    selectFriend: 'Select a friend',
-    requestSent: 'Friend request sent',
-    requestCancelled: 'Request cancelled',
-    friendAdded: 'Friend added',
-    requestDeclined: 'Request declined',
-    unfriended: 'Unfriended',
     saved: 'Saved',
-    notSet: 'Not set',
-    updatedProfilePic: 'updated their profile picture',
-    confirmUnfriend: 'Are you sure you want to unfriend?'
+    updatedProfilePic: 'updated their profile picture'
   }
 };
 
-function setLanguage(lang){
-  if(!translations[lang]) lang = 'bn';
+function setLanguage(lang) {
+  if (!translations[lang]) lang = 'bn';
   currentLang = lang;
   const t = translations[lang];
   document.getElementById('loginTitle').textContent = t.login;
   document.getElementById('signupTitle').textContent = t.signup;
-  document.getElementById('forgotTitle').textContent = t.forgot;
   document.getElementById('navProfile').title = t.profile;
-  document.getElementById('navBrowse').title = t.users;
-  document.getElementById('navRequests').title = t.requests;
   document.getElementById('navFeed').title = t.feed;
-  document.getElementById('navChat').title = t.chat;
-  document.getElementById('navNotifications').title = t.notifications;
   document.getElementById('navLogout').title = t.logout;
   document.getElementById('newPostText').placeholder = t.writeComment;
-  renderUsersList();
-  renderRequests();
+  renderMyProfile();
   renderFeed();
-  renderNotifications();
-  if(document.getElementById('chatWindow').dataset.with){
-    openChatWith(document.getElementById('chatWindow').dataset.with);
-  }
 }
 
-/* ---------------------------
-  Initial UI state & keyboard navigation
----------------------------*/
-(function init(){
-  ['signupPanel','forgotPanel','profilePanel','browsePanel','requestsPanel','feedPanel','chatPanel','notificationsPanel'].forEach(s=>document.getElementById(s).style.display='none');
+(function init() {
+  ['signupPanel', 'profilePanel', 'feedPanel'].forEach(s => document.getElementById(s).style.display = 'none');
   setLanguage('bn');
   document.getElementById('loginEmail').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') doLogin();
   });
   document.getElementById('regEmail').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') doSignup();
+  });
+  loadStore(() => {
+    initializeDefaultData();
+    if (currentUser) onLogin();
   });
 })();
 </script>
