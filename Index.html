@@ -3,118 +3,128 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Matrimony App Telegram Demo</title>
+<title>Matrimony Telegram Storage</title>
 <style>
-body { font-family: Arial; background:#f0f2f5; margin:0; padding:0; }
-header { display:flex; justify-content:center; gap:10px; background:#4267B2; padding:10px 0; position:sticky; top:0; color:white;}
-header button { padding:8px 15px; border:none; border-radius:5px; background:white; color:#4267B2; font-weight:bold; cursor:pointer;}
-header button:hover { background:#e4e6eb;}
-.container { max-width:500px; margin:20px auto; padding:0 15px; }
-.auth-form { background:white; padding:20px; margin-bottom:20px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1);}
-.auth-form h2 { margin-top:0; color:#4267B2;}
-.auth-form input { width:100%; padding:10px; margin:8px 0 15px 0; border:1px solid #ccc; border-radius:5px;}
-.auth-form button { width:100%; padding:10px; background:#4267B2; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;}
-.auth-form button:hover { background:#365899;}
-.news-feed { background:white; padding:20px; border-radius:8px; max-height:400px; overflow-y:auto; box-shadow:0 2px 5px rgba(0,0,0,0.1);}
-.post { border-bottom:1px solid #ddd; padding:10px 0; }
-.post:last-child { border-bottom:none; }
-.post img { max-width:100%; border-radius:8px; margin-top:10px; }
+body{font-family:Arial;background:#f0f2f5;margin:0;padding:0;}
+header{display:flex;justify-content:center;gap:10px;background:#4267B2;padding:10px 0;color:white;}
+header button{padding:8px 15px;border:none;border-radius:5px;background:white;color:#4267B2;font-weight:bold;cursor:pointer;}
+header button:hover{background:#e4e6eb;}
+.container{max-width:800px;margin:20px auto;padding:0 15px;}
+.auth-form,.post-form,.news-feed{background:white;padding:20px;margin-bottom:20px;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+.auth-form h2,.post-form h2{margin-top:0;color:#4267B2;}
+.auth-form input,.post-form input,.post-form textarea{width:100%;padding:10px;margin:8px 0 15px 0;border:1px solid #ccc;border-radius:5px;}
+.auth-form button,.post-form button{width:100%;padding:10px;background:#4267B2;color:white;border:none;border-radius:5px;font-weight:bold;cursor:pointer;}
+.auth-form button:hover,.post-form button:hover{background:#365899;}
+.news-feed{max-height:500px;overflow-y:auto;}
+.post{border-bottom:1px solid #ddd;padding:10px 0;}
+.post:last-child{border-bottom:none;}
+.post img, .post video{width:100%;border-radius:8px;margin-top:10px;max-height:600px;object-fit:cover;}
 </style>
 </head>
 <body>
 
 <header>
-    <button onclick="showSection('login')">Login</button>
-    <button onclick="showSection('signup')">Signup</button>
-    <button onclick="showSection('forget')">Forget Password</button>
+<button onclick="showSection('login')">Login</button>
+<button onclick="showSection('signup')">Signup</button>
+<button onclick="showSection('news')">News Feed</button>
 </header>
 
 <div class="container">
 
-    <!-- Login Form -->
-    <div class="auth-form" id="login">
-        <h2>Login</h2>
-        <input type="text" placeholder="Mobile Number">
-        <input type="password" placeholder="Password">
-        <button onclick="alert('Login Clicked')">Login</button>
-    </div>
+<!-- Login -->
+<div class="auth-form" id="login">
+<h2>Login</h2>
+<input type="text" id="login-number" placeholder="Mobile Number">
+<input type="password" id="login-pass" placeholder="Password">
+<button onclick="loginUser()">Login</button>
+</div>
 
-    <!-- Signup Form -->
-    <div class="auth-form" id="signup" style="display:none;">
-        <h2>Signup</h2>
-        <input type="text" placeholder="Full Name">
-        <input type="text" placeholder="Mobile Number">
-        <input type="password" placeholder="Password">
-        <button onclick="alert('Signup Clicked')">Signup</button>
-    </div>
+<!-- Signup -->
+<div class="auth-form" id="signup" style="display:none;">
+<h2>Signup</h2>
+<input type="text" id="signup-name" placeholder="Full Name">
+<input type="text" id="signup-number" placeholder="Mobile Number">
+<input type="password" id="signup-pass" placeholder="Password">
+<button onclick="signupUser()">Signup</button>
+</div>
 
-    <!-- Forget Password -->
-    <div class="auth-form" id="forget" style="display:none;">
-        <h2>Forget Password</h2>
-        <input type="text" placeholder="Mobile Number">
-        <button onclick="alert('Reset Clicked')">Reset Password</button>
-    </div>
-
-    <!-- News Feed -->
-    <div class="news-feed" id="news" style="display:block;">
-        <div class="post-form">
-            <h2>Post Something</h2>
-            <textarea id="post-text" placeholder="What's on your mind?"></textarea>
-            <input type="file" id="post-image">
-            <button onclick="sendToTelegram()">Post to Telegram</button>
-        </div>
-        <div id="feed"></div>
-    </div>
+<!-- News Feed -->
+<div class="news-feed" id="news" style="display:none;">
+<div class="post-form">
+<h2>Post Something</h2>
+<textarea id="post-text" placeholder="What's on your mind?"></textarea>
+<input type="file" id="post-file">
+<button onclick="sendPost()">Post</button>
+</div>
+<div id="feed"></div>
+</div>
 
 </div>
 
 <script>
-// Show only selected section
+// Sections switch
 function showSection(section){
-    const sections = ['login','signup','forget'];
-    sections.forEach(id => {
-        document.getElementById(id).style.display = (id===section)?'block':'none';
-    });
+['login','signup','news'].forEach(id=>document.getElementById(id).style.display=(id===section)?'block':'none');
 }
 
-// Telegram Settings
-const BOT_TOKEN = "5729834421:AAGrCVQPlxmxrqCT_g0mzWny-EdWU1febhE";
-const CHAT_ID = "-1003102946985";
+let currentUser = null;
 
-// Send text/image to Telegram Channel
-async function sendToTelegram(){
-    const text = document.getElementById('post-text').value;
-    const imageInput = document.getElementById('post-image');
-    const feed = document.getElementById('feed');
+// Signup -> send to Telegram
+async function signupUser(){
+const name = document.getElementById('signup-name').value;
+const number = document.getElementById('signup-number').value;
+const pass = document.getElementById('signup-pass').value;
 
-    // Text message
-    if(text){
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ chat_id: CHAT_ID, text: text })
-        });
-        const postHTML = `<div class="post"><p>${text}</p></div>`;
-        feed.prepend(postHTML);
-        document.getElementById('post-text').value = '';
-    }
+if(!name||!number||!pass){alert('Fill all fields');return;}
 
-    // Image message
-    if(imageInput.files.length>0){
-        const formData = new FormData();
-        formData.append('chat_id', CHAT_ID);
-        formData.append('document', imageInput.files[0]);
-        formData.append('caption', text);
+let res = await fetch('/save_user',{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({name,number,password:pass})
+});
+let data = await res.json();
+if(data.status==='success'){
+alert('Signup successful!'); currentUser=name; showSection('news');
+}
+}
 
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
-            method:'POST', body: formData
-        });
+// Login (Demo: just checks if entered number exists)
+async function loginUser(){
+const number = document.getElementById('login-number').value;
+const pass = document.getElementById('login-pass').value;
+let res = await fetch('/save_user',{ // demo: sends login to telegram
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({name:'LoginUser',number,password:pass})
+});
+currentUser='LoginUser';
+alert('Login sent to Telegram'); showSection('news');
+}
 
-        const url = URL.createObjectURL(imageInput.files[0]);
-        const postHTML = `<div class="post"><p>${text}</p><img src="${url}"></div>`;
-        feed.prepend(postHTML);
-        imageInput.value='';
-    }
+// Send post (text + image/video) to Telegram
+async function sendPost(){
+const text = document.getElementById('post-text').value;
+const fileInput = document.getElementById('post-file');
+const feed = document.getElementById('feed');
+
+let formData = new FormData();
+formData.append('text', text);
+if(fileInput.files.length>0) formData.append('file', fileInput.files[0]);
+
+let res = await fetch('/send_post',{method:'POST',body:formData});
+let data = await res.json();
+
+// Preview in feed
+let postHTML = `<div class="post"><p><strong>${currentUser||'Guest'}:</strong> ${text}</p>`;
+if(fileInput.files.length>0){
+const f = fileInput.files[0];
+if(f.type.startsWith('video')) postHTML+=`<video controls src="${URL.createObjectURL(f)}"></video>`;
+else postHTML+=`<img src="${URL.createObjectURL(f)}">`;
+}
+postHTML+='</div>';
+feed.prepend(postHTML);
+
+document.getElementById('post-text').value=''; fileInput.value='';
 }
 </script>
 
